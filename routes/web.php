@@ -3,8 +3,8 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserManagementController;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -33,11 +33,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('/products/{product}', [ProductController::class, 'update']);
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
-        Route::get('/reports', function () {
-            Gate::authorize('view-reports');
-
-            return 'Reportes de inventario';
-        })->name('reports.index');
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index')->can('view-reports');
 
         Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
         Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
@@ -47,7 +43,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
 
     Route::middleware('role:empleado')->group(function () {
+        Route::get('/inventory/entries', [InventoryController::class, 'entries'])->name('inventory.entries.index');
         Route::post('/inventory/entries', [InventoryController::class, 'store'])->name('inventory.entries.store');
+        Route::get('/inventory/sales', [InventoryController::class, 'sales'])->name('inventory.sales.index');
         Route::post('/inventory/sales', [InventoryController::class, 'processSale'])->name('inventory.sales.process');
     });
 });

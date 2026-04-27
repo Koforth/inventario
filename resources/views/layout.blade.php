@@ -190,8 +190,8 @@
                     @endif
 
                     @if (auth()->user()->role === 'empleado')
-                        <span class="nav-link disabled">Entradas</span>
-                        <span class="nav-link disabled">Ventas</span>
+                        <a href="{{ route('inventory.entries.index') }}" class="nav-link {{ request()->routeIs('inventory.entries.*') ? 'active' : '' }}">Entradas</a>
+                        <a href="{{ route('inventory.sales.index') }}" class="nav-link {{ request()->routeIs('inventory.sales.*') ? 'active' : '' }}">Ventas</a>
                     @endif
                 @endauth
             </nav>
