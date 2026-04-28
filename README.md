@@ -1,164 +1,85 @@
 # Manual del Sistema de Inventario
 
-Sistema web desarrollado con Laravel para controlar productos del hogar, existencias, entradas, ventas, usuarios y reportes de movimientos.
+Sistema web en Laravel para administrar inventario, almacen, ventas, caja, compras, cotizaciones, usuarios, roles, permisos y reportes.
 
 ## Tabla de Contenido
 
 - [Descripcion general](#descripcion-general)
-- [Tecnologias utilizadas](#tecnologias-utilizadas)
-- [Requisitos](#requisitos)
+- [Tecnologias](#tecnologias)
 - [Instalacion](#instalacion)
-- [Configuracion del entorno](#configuracion-del-entorno)
-- [Ejecucion del proyecto](#ejecucion-del-proyecto)
-- [Usuarios y roles](#usuarios-y-roles)
-- [Manual de uso](#manual-de-uso)
-- [Estructura del proyecto](#estructura-del-proyecto)
+- [Ejecucion](#ejecucion)
+- [Usuarios, roles y permisos](#usuarios-roles-y-permisos)
+- [Modulos del sistema](#modulos-del-sistema)
 - [Base de datos](#base-de-datos)
 - [Comandos utiles](#comandos-utiles)
-- [Mantenimiento y recomendaciones](#mantenimiento-y-recomendaciones)
-- [Solucion de problemas](#solucion-de-problemas)
+- [Notas operativas](#notas-operativas)
 
 ## Descripcion General
 
-El proyecto es una aplicacion de inventario para registrar productos, consultar existencias, controlar entradas y ventas, administrar usuarios y revisar reportes operativos.
-
-La aplicacion trabaja con autenticacion, roles y permisos. Cada usuario ve solamente las opciones que corresponden a su rol.
+La aplicacion permite controlar productos, existencias, entradas, ventas, compras, proveedores, caja diaria, cotizaciones y reportes operativos.
 
 Funciones principales:
 
-- Inicio de sesion y registro de usuarios.
-- Catalogo de productos con busqueda y filtros.
-- Creacion, edicion y eliminacion de productos.
-- Carga de imagen JPG/JPEG por producto.
-- Control de stock minimo y alerta de bajo stock.
-- Registro de entradas de inventario.
-- Procesamiento de ventas con descuento automatico de stock.
-- Reportes de movimientos, ventas, entradas, mermas, traslados y productos mas vendidos.
-- Administracion de roles de usuario.
+- Autenticacion de usuarios.
+- Roles multiples por usuario.
+- Permisos asociados a roles.
+- Catalogo de productos en grilla.
+- Modal carrusel para usuarios invitados/empleados.
+- Edicion directa para administradores.
+- Multiples imagenes JPG/JPEG por producto.
+- Proveedores multiples por producto.
+- Modulo Almacen.
+- Modulo Compras.
+- Modulo Caja.
+- Modulo Cotizaciones.
+- Reportes con exportacion Excel.
+- Breadcrumb global e iconos por modulo.
 
-## Tecnologias Utilizadas
+## Tecnologias
 
 - PHP 8.3 o superior.
 - Laravel 13.
-- MySQL, MariaDB o SQLite, segun la configuracion del archivo `.env`.
-- Composer para dependencias PHP.
-- Node.js y npm para assets frontend.
-- Vite.
-- Bootstrap 5 en las vistas principales.
-- Tailwind CSS disponible en la configuracion de assets.
-
-## Requisitos
-
-Antes de ejecutar el proyecto, asegurese de tener instalado:
-
-- PHP 8.3 o superior.
+- MySQL/MariaDB.
 - Composer.
 - Node.js y npm.
-- Servidor de base de datos si usara MySQL o MariaDB.
-- Laragon, XAMPP, Herd, Valet o un entorno equivalente.
-
-En este equipo el proyecto esta ubicado en:
-
-```text
-c:\laragon\www\inventario
-```
+- Vite.
+- Bootstrap 5.
+- Bootstrap Icons.
 
 ## Instalacion
 
-1. Entrar a la carpeta del proyecto:
-
 ```bash
 cd c:\laragon\www\inventario
-```
-
-2. Instalar dependencias PHP:
-
-```bash
 composer install
-```
-
-3. Instalar dependencias JavaScript:
-
-```bash
 npm install
-```
-
-4. Crear el archivo de entorno si no existe:
-
-```bash
 copy .env.example .env
-```
-
-5. Generar la llave de la aplicacion:
-
-```bash
 php artisan key:generate
-```
-
-6. Ejecutar migraciones:
-
-```bash
 php artisan migrate
-```
-
-7. Cargar datos iniciales:
-
-```bash
 php artisan db:seed
-```
-
-8. Crear el enlace publico para imagenes de productos:
-
-```bash
 php artisan storage:link
 ```
 
-## Configuracion del Entorno
-
-La configuracion principal se encuentra en el archivo `.env`.
-
-Variables importantes:
+Configurar `.env` segun el entorno:
 
 ```env
-APP_NAME="Sistema de Inventario"
-APP_ENV=local
-APP_DEBUG=true
-APP_URL=http://inventario.test
+APP_URL=http://127.0.0.1:8000
+APP_TIMEZONE=America/Managua
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=inventario
+DB_DATABASE=sisinventario
 DB_USERNAME=root
 DB_PASSWORD=
-
-FILESYSTEM_DISK=local
-SESSION_DRIVER=database
-QUEUE_CONNECTION=database
-CACHE_STORE=database
 ```
 
-Si se usa SQLite, configure:
-
-```env
-DB_CONNECTION=sqlite
-```
-
-Y cree el archivo:
-
-```bash
-type nul > database\database.sqlite
-```
-
-Despues de cambiar variables del `.env`, limpie la cache de configuracion:
+Despues de cambiar `.env`:
 
 ```bash
 php artisan config:clear
 ```
 
-## Ejecucion del Proyecto
-
-Para desarrollo, puede levantar Laravel y Vite por separado.
+## Ejecucion
 
 Servidor Laravel:
 
@@ -169,73 +90,53 @@ php artisan serve
 Servidor Vite:
 
 ```bash
-npm run dev
+npm.cmd run dev
 ```
 
-Tambien existe un script que ejecuta servidor, cola, logs y Vite al mismo tiempo:
+En PowerShell puede ser necesario usar `npm.cmd` si la politica de ejecucion bloquea `npm.ps1`.
 
-```bash
-composer run dev
-```
+## Usuarios, Roles y Permisos
 
-Para compilar assets para produccion:
+El sistema ya no valida por un unico campo `role`; ahora usa roles multiples y permisos.
 
-```bash
-npm run build
-```
-
-## Usuarios y Roles
-
-El sistema maneja tres roles:
-
-| Rol | Permisos principales |
-| --- | --- |
-| `admin` | Administra productos, usuarios y reportes. |
-| `empleado` | Registra entradas y procesa ventas. |
-| `invitado` | Acceso basico al sistema despues del registro. |
-
-El seeder crea un usuario administrador inicial:
+Usuario inicial:
 
 ```text
 Correo: admin@example.com
 Clave: password
-Rol: admin
 ```
 
-Por seguridad, cambie esta clave antes de usar el sistema en un entorno real.
+Roles iniciales:
 
-Los usuarios registrados desde la pantalla de registro reciben inicialmente el rol `invitado`. Un administrador debe cambiar el rol desde el modulo de usuarios.
+| Rol | Permisos principales |
+| --- | --- |
+| Administrador | Acceso completo. |
+| Empleado | Inventario, ventas, compras, caja y cotizaciones. |
+| Agregar productos | Catalogo y creacion de productos. |
+| Invitado | Catalogo basico. |
 
-## Manual de Uso
+Permisos registrados:
 
-### 1. Inicio de Sesion
+- `view-catalog`
+- `create-products`
+- `manage-products`
+- `manage-inventory`
+- `manage-quotes`
+- `manage-purchases`
+- `manage-cash`
+- `view-reports`
+- `manage-users`
 
-Ruta:
+Notas:
 
-```text
-/login
-```
+- Un usuario puede tener varios roles.
+- Las rutas validan permisos, no nombres de rol.
+- En el topbar se muestra solo el rol de mayor privilegio.
+- Si el usuario solo tiene rol Invitado, no se muestra rol en topbar ni en la tarjeta de sesion.
 
-Ingrese correo y clave. Si las credenciales son correctas, el sistema redirige al panel principal.
+## Modulos del Sistema
 
-### 2. Registro de Usuarios
-
-Ruta:
-
-```text
-/register
-```
-
-Campos requeridos:
-
-- Nombre.
-- Correo unico.
-- Clave de al menos 8 caracteres.
-- Confirmacion de clave.
-
-El usuario queda registrado como `invitado`.
-
-### 3. Panel Principal
+### Home
 
 Ruta:
 
@@ -243,9 +144,9 @@ Ruta:
 /home
 ```
 
-Muestra un resumen de la sesion actual y accesos al catalogo. Las opciones visibles dependen del rol del usuario.
+Muestra la sesion activa y accesos principales segun permisos.
 
-### 4. Catalogo de Productos
+### Catalogo
 
 Ruta:
 
@@ -253,89 +154,85 @@ Ruta:
 /products
 ```
 
-Disponible para usuarios autenticados.
+Permite ver productos en grilla minimalista. Cada tarjeta muestra imagen, nombre y accion principal.
 
-Permite:
+Comportamiento:
 
-- Ver productos registrados.
-- Buscar por SKU, codigo de barras, nombre, marca, categoria o proveedor.
-- Filtrar productos con bajo stock.
-- Ver estadisticas generales:
-  - Productos registrados.
-  - Productos con bajo stock.
-  - Valor total del inventario.
+- Invitado y empleado ven detalle en modal carrusel.
+- Administrador sin rol empleado va directo a editar.
+- Administrador con rol empleado tambien puede ver el modal carrusel.
 
-Un producto se considera con bajo stock cuando:
+El modal muestra:
 
-```text
-stock <= stock_minimo
-```
+- Carrusel de imagenes del producto.
+- Datos generales.
+- Proveedores.
+- Presentacion.
+- Precios.
+- Stock.
+- Atributos: impuesto, perecedero e inventariable.
 
-### 5. Crear Producto
+### Productos
 
-Ruta:
+Ruta de creacion:
 
 ```text
 /products/create
 ```
 
-Disponible solo para `admin`.
+Campos principales:
 
-Campos del producto:
+- SKU.
+- Codigo de barras.
+- Nombre.
+- Categoria.
+- Marca.
+- Presentacion.
+- Stock.
+- Stock minimo.
+- Precio de compra.
+- Precio venta 1.
+- Precio venta 2.
+- Precio venta 3.
+- Proveedores separados por coma.
+- Sujeto a impuesto.
+- Perecedero.
+- Inventariable.
+- Fecha de vencimiento.
+- Descripcion.
+- Multiples imagenes JPG/JPEG.
 
-- SKU obligatorio y unico.
-- Codigo de barras opcional y unico.
-- Nombre obligatorio.
-- Categoria obligatoria.
-- Marca obligatoria.
-- Stock obligatorio.
-- Stock minimo obligatorio.
-- Precio obligatorio.
-- Proveedor opcional.
-- Descripcion opcional.
-- Imagen opcional en formato JPG/JPEG, maximo 2 MB.
+Limites de imagenes:
 
-La imagen se guarda en el disco publico de Laravel. Para verla desde el navegador debe existir el enlace creado con:
+- Hasta 8 imagenes por carga.
+- Maximo 2 MB por imagen.
+- Solo JPG/JPEG.
 
-```bash
-php artisan storage:link
-```
-
-### 6. Editar Producto
-
-Ruta:
-
-```text
-/products/{producto}/edit
-```
-
-Disponible solo para `admin`.
-
-Permite actualizar los datos del producto. Si se sube una nueva imagen, el sistema elimina la imagen anterior del disco publico.
-
-### 7. Eliminar Producto
-
-Disponible solo para `admin`.
-
-Al eliminar un producto:
-
-- Se borra el registro del producto.
-- Se elimina su imagen asociada, si existe.
-- Los movimientos relacionados se eliminan por la relacion configurada en base de datos.
-
-### 8. Ver Detalle de Producto
+### Almacen
 
 Ruta:
 
 ```text
-/products/{producto}
+/warehouse
 ```
 
-Disponible para usuarios autenticados.
+Incluye:
 
-Muestra la informacion individual del producto.
+- Gestion de categorias.
+- Gestion de marcas.
+- Gestion de presentaciones.
+- Acceso a productos.
+- Consulta de productos perecederos.
 
-### 9. Entradas de Inventario
+Productos perecederos:
+
+```text
+/warehouse/perishables
+```
+
+Permite consultar productos proximos a vencer segun cantidad de dias.
+
+### Entradas de Inventario
 
 Ruta:
 
@@ -343,21 +240,9 @@ Ruta:
 /inventory/entries
 ```
 
-Disponible solo para `empleado`.
+Permite registrar entradas de productos y aumentar stock.
 
-Permite registrar productos que ingresan al stock.
-
-Funcionamiento:
-
-1. Buscar el producto.
-2. Indicar la cantidad.
-3. Presionar `Agregar`.
-4. El sistema aumenta el stock.
-5. Se registra un movimiento de tipo `entrada`.
-
-El registro se realiza dentro de una transaccion de base de datos para evitar inconsistencias.
-
-### 10. Ventas
+### Ventas
 
 Ruta:
 
@@ -365,22 +250,147 @@ Ruta:
 /inventory/sales
 ```
 
-Disponible solo para `empleado`.
+Permite procesar ventas mediante modal tipo facturacion.
 
-Permite procesar ventas y descontar existencias.
+Incluye:
 
-Funcionamiento:
+- Producto.
+- Cantidad.
+- Comprobante: ticket o factura.
+- Metodo de pago: efectivo, tarjeta o transferencia.
+- Total a pagar.
+- Efectivo recibido.
+- Cambio automatico.
 
-1. Buscar el producto disponible.
-2. Indicar la cantidad vendida.
-3. Presionar `Vender`.
-4. El sistema valida que exista stock suficiente.
-5. Se descuenta el stock.
-6. Se registra un movimiento de tipo `venta`.
+Importante:
 
-Si no hay stock suficiente, el sistema muestra un error y no descuenta unidades.
+- Para vender es necesario tener una caja abierta.
+- Al vender se descuenta stock.
+- La venta registra automaticamente un ingreso en caja.
 
-### 11. Reportes
+### Caja
+
+Ruta:
+
+```text
+/cash
+```
+
+Permite administrar la caja diaria.
+
+Funciones:
+
+- Abrir caja con monto inicial.
+- Cerrar caja.
+- Registrar ingresos manuales.
+- Registrar devoluciones.
+- Registrar prestamos.
+- Registrar gastos.
+- Ver movimientos de la caja abierta.
+
+Estadisticas:
+
+- Monto inicial.
+- Ingreso.
+- Devoluciones.
+- Prestamos.
+- Gastos.
+- Ingresos totales.
+- Egresos.
+- Saldo.
+
+### Cotizaciones
+
+Ruta:
+
+```text
+/quotes
+```
+
+Funciones:
+
+- Generar cotizaciones con varios productos.
+- Calcular subtotal, impuesto y total.
+- Guardar datos del cliente.
+- Ver detalle de cotizacion.
+- Consultar cotizaciones entre fechas.
+
+Rutas:
+
+```text
+/quotes
+/quotes/create
+/quotes/{quote}
+```
+
+### Compras
+
+Ruta:
+
+```text
+/purchases
+```
+
+Funciones:
+
+- Realizar compra.
+- Consultar compras por fechas.
+- Consultar compras por mes.
+- Ver compras al credito.
+- Registrar abonos.
+- Ver historial de precios.
+
+Realizar compra:
+
+```text
+/purchases/create
+```
+
+Permite:
+
+- Seleccionar proveedor.
+- Buscar/seleccionar productos por nombre, SKU o codigo.
+- Indicar cantidades.
+- Indicar costo unitario.
+- Elegir contado o credito.
+- Calcular subtotal, impuesto y total.
+
+Al guardar una compra:
+
+- Aumenta stock si el producto es inventariable.
+- Actualiza el precio de compra.
+- Guarda historial de precios.
+- Si es credito, registra saldo pendiente y abonos.
+
+Proveedores:
+
+```text
+/suppliers
+```
+
+Campos:
+
+- Nombre.
+- DNI.
+- RUC.
+- Contacto.
+- Telefono.
+- Correo.
+- Direccion.
+
+Historial de precios:
+
+```text
+/purchases/price-history
+```
+
+Compras al credito:
+
+```text
+/purchases/credits
+```
+
+### Reportes
 
 Ruta:
 
@@ -388,30 +398,26 @@ Ruta:
 /reports
 ```
 
-Disponible solo para `admin`.
-
 Incluye:
 
-- Total de movimientos segun filtros.
-- Unidades vendidas.
-- Valor de ventas.
-- Entradas registradas.
-- Productos con bajo stock.
-- Valor total del inventario.
+- Movimientos.
+- Ventas.
+- Entradas.
 - Mermas.
 - Traslados.
-- Ranking de productos mas vendidos.
+- Bajo stock.
+- Valor de inventario.
+- Productos mas vendidos.
+- Exportacion Excel.
 
-Filtros disponibles:
+Filtros:
 
-- Tipo de movimiento: todos, entrada, venta, merma o traslado.
+- Tipo de movimiento.
 - Fecha desde.
 - Fecha hasta.
-- Busqueda por producto, SKU, codigo o usuario.
+- Busqueda.
 
-Nota: actualmente el sistema registra desde la interfaz entradas y ventas. Los tipos `merma` y `traslado` existen en la base de datos y aparecen en reportes, pero no tienen pantalla propia de registro.
-
-### 12. Administracion de Usuarios
+### Usuarios
 
 Ruta:
 
@@ -419,164 +425,69 @@ Ruta:
 /users
 ```
 
-Disponible solo para `admin`.
-
 Permite:
 
-- Buscar usuarios por nombre, correo o rol.
-- Ver el rol actual.
-- Cambiar el rol de otros usuarios.
+- Buscar usuarios.
+- Ver roles actuales.
+- Asignar multiples roles.
+- Validar permisos asociados a roles.
 
-Restriccion importante:
+Restriccion:
 
-- Un administrador no puede cambiar su propio rol mientras tiene la sesion iniciada.
-
-## Estructura del Proyecto
-
-Carpetas y archivos principales:
-
-```text
-app/
-  Http/
-    Controllers/
-      AuthController.php
-      ProductController.php
-      InventoryController.php
-      ReportController.php
-      UserManagementController.php
-    Middleware/
-      EnsureUserHasRole.php
-  Models/
-    Brand.php
-    Category.php
-    Movement.php
-    Product.php
-    User.php
-
-database/
-  migrations/
-  seeders/
-
-resources/
-  views/
-    auth/
-    inventory/
-    products/
-    reports/
-    users/
-    layout.blade.php
-
-routes/
-  web.php
-
-public/
-storage/
-```
-
-Controladores principales:
-
-| Controlador | Responsabilidad |
-| --- | --- |
-| `AuthController` | Login, registro y cierre de sesion. |
-| `ProductController` | Catalogo, creacion, edicion, detalle y eliminacion de productos. |
-| `InventoryController` | Entradas y ventas de inventario. |
-| `ReportController` | Reportes, filtros y metricas. |
-| `UserManagementController` | Listado y cambio de roles de usuarios. |
-
-Modelos principales:
-
-| Modelo | Descripcion |
-| --- | --- |
-| `User` | Usuarios autenticados y su rol. |
-| `Product` | Productos, precios, stock, categoria, marca e imagen. |
-| `Movement` | Movimientos de inventario. |
-| `Category` | Categorias de producto. |
-| `Brand` | Marcas de producto. |
+- El usuario autenticado no puede modificarse a si mismo desde esta pantalla.
 
 ## Base de Datos
 
 Tablas principales:
 
-### `users`
-
-Guarda usuarios del sistema.
-
-Campos relevantes:
-
-- `name`
-- `email`
-- `password`
-- `role`
-
-### `categories`
-
-Guarda categorias de productos.
-
-Campos relevantes:
-
-- `nombre`
-- `descripcion`
-
-### `brands`
-
-Guarda marcas.
-
-Campos relevantes:
-
-- `nombre`
-
-### `products`
-
-Guarda productos del inventario.
-
-Campos relevantes:
-
-- `sku`
-- `barcode`
-- `nombre`
-- `descripcion`
-- `image_path`
-- `precio`
-- `stock`
-- `stock_minimo`
-- `proveedor`
-- `category_id`
-- `brand_id`
-
-### `movements`
-
-Guarda entradas, ventas y otros tipos de movimiento.
-
-Campos relevantes:
-
-- `product_id`
-- `tipo`: `entrada`, `venta`, `merma`, `traslado`
-- `cantidad`
-- `user_id`
+- `users`
+- `roles`
+- `permissions`
+- `role_user`
+- `permission_role`
+- `categories`
+- `brands`
+- `presentations`
+- `products`
+- `product_images`
+- `suppliers`
+- `product_supplier`
+- `movements`
+- `quotes`
+- `quote_items`
+- `purchases`
+- `purchase_items`
+- `purchase_payments`
+- `cash_registers`
+- `cash_movements`
 
 Relaciones principales:
 
-- Un producto pertenece a una categoria.
-- Un producto pertenece a una marca.
+- Un usuario tiene muchos roles.
+- Un rol tiene muchos permisos.
+- Un producto pertenece a categoria, marca y presentacion.
+- Un producto puede tener multiples imagenes.
+- Un producto puede tener multiples proveedores.
 - Un producto tiene muchos movimientos.
-- Un movimiento pertenece a un producto.
-- Un movimiento pertenece a un usuario.
+- Una cotizacion tiene muchos items.
+- Una compra tiene muchos items y puede tener muchos abonos.
+- Una caja tiene muchos movimientos de caja.
 
 ## Comandos Utiles
 
-Ejecutar migraciones:
+Migraciones:
 
 ```bash
 php artisan migrate
 ```
 
-Recrear la base de datos y cargar seeders:
+Recrear base y seed:
 
 ```bash
 php artisan migrate:fresh --seed
 ```
 
-Cargar seeders sin borrar tablas:
+Seeders:
 
 ```bash
 php artisan db:seed
@@ -591,127 +502,31 @@ php artisan route:clear
 php artisan view:clear
 ```
 
-Ver rutas registradas:
+Ver rutas:
 
 ```bash
 php artisan route:list
 ```
 
-Ejecutar pruebas:
+Pruebas:
 
 ```bash
 php artisan test
 ```
 
-Formatear codigo PHP con Pint:
+Compilar assets:
 
 ```bash
-vendor\bin\pint
+npm.cmd run build
 ```
 
-Compilar frontend:
+## Notas Operativas
 
-```bash
-npm run build
-```
-
-## Mantenimiento y Recomendaciones
-
-- Cambiar la clave del usuario `admin@example.com` despues de instalar.
-- No subir el archivo `.env` a repositorios publicos.
-- Crear respaldos periodicos de la base de datos.
-- Ejecutar `php artisan storage:link` despues de desplegar para mostrar imagenes.
-- Mantener actualizado Composer y npm.
-- Revisar productos con bajo stock desde catalogo y reportes.
-- Asignar roles correctos a usuarios nuevos antes de permitir operaciones.
-- Validar que el servidor tenga permisos de escritura en `storage/` y `bootstrap/cache/`.
-
-## Solucion de Problemas
-
-### No cargan las imagenes de productos
-
-Ejecute:
-
-```bash
-php artisan storage:link
-```
-
-Verifique que el archivo exista dentro de:
-
-```text
-storage/app/public/products
-```
-
-### Error de permisos en `storage` o `bootstrap/cache`
-
-Revise que el servidor web pueda escribir en:
-
-```text
-storage/
-bootstrap/cache/
-```
-
-### Cambios del `.env` no se reflejan
-
-Ejecute:
-
-```bash
-php artisan config:clear
-```
-
-### Error de base de datos
-
-Revise en `.env`:
-
-```env
-DB_CONNECTION
-DB_HOST
-DB_PORT
-DB_DATABASE
-DB_USERNAME
-DB_PASSWORD
-```
-
-Luego ejecute:
-
-```bash
-php artisan migrate
-```
-
-### No aparece una opcion del menu
-
-Revise el rol del usuario:
-
-- `admin` ve productos, usuarios y reportes.
-- `empleado` ve entradas y ventas.
-- `invitado` tiene acceso limitado.
-
-### No se puede vender un producto
-
-Verifique:
-
-- Que el producto tenga stock mayor que cero.
-- Que la cantidad vendida no supere el stock actual.
-- Que el usuario tenga rol `empleado`.
-
-## Estado Actual del Proyecto
-
-El proyecto ya cuenta con los modulos principales para operar inventario:
-
-- Autenticacion.
-- Roles.
-- Productos.
-- Entradas.
-- Ventas.
-- Reportes.
-- Usuarios.
-- Imagenes de productos.
-
-Mejoras sugeridas para futuras versiones:
-
-- Pantallas para registrar mermas y traslados.
-- Exportacion de reportes a PDF o Excel.
-- Historial detallado dentro del perfil de cada producto.
-- Recuperacion de contrasena.
-- Auditoria avanzada de cambios.
-- Dashboard con graficos.
+- Abrir caja antes de procesar ventas.
+- Ejecutar `php artisan storage:link` para ver imagenes.
+- Cambiar la clave del usuario administrador inicial.
+- Asignar roles correctos a usuarios nuevos.
+- Usar proveedores separados por coma en productos.
+- Revisar productos perecederos desde Almacen.
+- Consultar compras al credito para registrar abonos.
+- Usar `APP_TIMEZONE=America/Managua` para que reportes y fechas usen hora local.
