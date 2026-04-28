@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Movement;
 use App\Models\Product;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
@@ -24,23 +26,7 @@ class ReportController extends Controller
         $dateTo = $filters['date_to'] ?? null;
         $search = trim((string) ($filters['search'] ?? ''));
 
-        $movementQuery = Movement::query()
-            ->with(['product.brand', 'product.category', 'user'])
-            ->when($tipo !== 'todos', fn ($query) => $query->where('tipo', $tipo))
-            ->when($dateFrom, fn ($query) => $query->whereDate('movements.created_at', '>=', $dateFrom))
-            ->when($dateTo, fn ($query) => $query->whereDate('movements.created_at', '<=', $dateTo))
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($query) use ($search) {
-                    $query
-                        ->whereHas('product', function ($query) use ($search) {
-                            $query
-                                ->where('nombre', 'like', "%{$search}%")
-                                ->orWhere('sku', 'like', "%{$search}%")
-                                ->orWhere('barcode', 'like', "%{$search}%");
-                        })
-                        ->orWhereHas('user', fn ($query) => $query->where('name', 'like', "%{$search}%"));
-                });
-            });
+        $movementQuery = $this->movementQuery($tipo, $dateFrom, $dateTo, $search);
 
         $summary = (clone $movementQuery)
             ->toBase()
@@ -102,5 +88,57 @@ class ReportController extends Controller
             'dateTo',
             'search',
         ));
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $filters = $request->validate([
+            'tipo' => ['nullable', 'in:todos,entrada,venta,merma,traslado'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date'],
+            'search' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $tipo = $filters['tipo'] ?? 'todos';
+        $dateFrom = $filters['date_from'] ?? null;
+        $dateTo = $filters['date_to'] ?? null;
+        $search = trim((string) ($filters['search'] ?? ''));
+        $fileName = 'reporte-inventario-' . now()->format('Y-m-d-His') . '.xls';
+
+        return response()->streamDownload(function () use ($tipo, $dateFrom, $dateTo, $search) {
+            echo view('reports.export', [
+                'movements' => $this->movementQuery($tipo, $dateFrom, $dateTo, $search)
+                    ->oldest('movements.created_at')
+                    ->get(),
+                'tipo' => $tipo,
+                'dateFrom' => $dateFrom,
+                'dateTo' => $dateTo,
+                'search' => $search,
+                'generatedAt' => now(),
+            ])->render();
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+        ]);
+    }
+
+    private function movementQuery(string $tipo, ?string $dateFrom, ?string $dateTo, string $search): Builder
+    {
+        return Movement::query()
+            ->with(['product.brand', 'product.category', 'user'])
+            ->when($tipo !== 'todos', fn ($query) => $query->where('tipo', $tipo))
+            ->when($dateFrom, fn ($query) => $query->whereDate('movements.created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($query) => $query->whereDate('movements.created_at', '<=', $dateTo))
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query
+                        ->whereHas('product', function ($query) use ($search) {
+                            $query
+                                ->where('nombre', 'like', "%{$search}%")
+                                ->orWhere('sku', 'like', "%{$search}%")
+                                ->orWhere('barcode', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('user', fn ($query) => $query->where('name', 'like', "%{$search}%"));
+                });
+            });
     }
 }

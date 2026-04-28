@@ -19,7 +19,7 @@
         @error('nombre') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
     </div>
 
-    <div class="col-md-6">
+    <div class="col-md-4">
         <label for="category_id" class="form-label fw-semibold">Categoria *</label>
         <select id="category_id" name="category_id" required class="form-select">
             <option value="">Seleccionar categoria</option>
@@ -32,7 +32,7 @@
         @error('category_id') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
     </div>
 
-    <div class="col-md-6">
+    <div class="col-md-4">
         <label for="brand_id" class="form-label fw-semibold">Marca *</label>
         <select id="brand_id" name="brand_id" required class="form-select">
             <option value="">Seleccionar marca</option>
@@ -43,6 +43,19 @@
             @endforeach
         </select>
         @error('brand_id') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+    </div>
+
+    <div class="col-md-4">
+        <label for="presentation_id" class="form-label fw-semibold">Presentacion *</label>
+        <select id="presentation_id" name="presentation_id" required class="form-select">
+            <option value="">Seleccionar presentacion</option>
+            @foreach ($presentations as $presentation)
+                <option value="{{ $presentation->id }}" @selected((int) old('presentation_id', $product->presentation_id) === $presentation->id)>
+                    {{ $presentation->nombre }}
+                </option>
+            @endforeach
+        </select>
+        @error('presentation_id') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
     </div>
 
     <div class="col-md-4">
@@ -58,14 +71,69 @@
     </div>
 
     <div class="col-md-4">
-        <label for="precio" class="form-label fw-semibold">Precio *</label>
-        <input id="precio" type="number" min="0" step="0.01" name="precio" value="{{ old('precio', $product->precio ?? 0) }}" required class="form-control">
-        @error('precio') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+        <label for="purchase_price" class="form-label fw-semibold">Precio de compra *</label>
+        <input id="purchase_price" type="number" min="0" step="0.01" name="purchase_price" value="{{ old('purchase_price', $product->purchase_price ?? 0) }}" required class="form-control">
+        @error('purchase_price') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+    </div>
+
+    <div class="col-md-4">
+        <label for="sale_price_1" class="form-label fw-semibold">Precio venta 1 *</label>
+        <input id="sale_price_1" type="number" min="0" step="0.01" name="sale_price_1" value="{{ old('sale_price_1', $product->sale_price_1 ?? $product->precio ?? 0) }}" required class="form-control">
+        @error('sale_price_1') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+    </div>
+
+    <div class="col-md-4">
+        <label for="sale_price_2" class="form-label fw-semibold">Precio venta 2</label>
+        <input id="sale_price_2" type="number" min="0" step="0.01" name="sale_price_2" value="{{ old('sale_price_2', $product->sale_price_2) }}" class="form-control">
+        @error('sale_price_2') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+    </div>
+
+    <div class="col-md-4">
+        <label for="sale_price_3" class="form-label fw-semibold">Precio venta 3</label>
+        <input id="sale_price_3" type="number" min="0" step="0.01" name="sale_price_3" value="{{ old('sale_price_3', $product->sale_price_3) }}" class="form-control">
+        @error('sale_price_3') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+    </div>
+
+    <div class="col-md-8">
+        <div class="row g-2 h-100 align-items-end">
+            <div class="col-sm-4">
+                <div class="form-check form-switch border rounded-3 p-3 ps-5">
+                    <input class="form-check-input" type="checkbox" id="taxable" name="taxable" value="1" @checked(old('taxable', $product->taxable))>
+                    <label class="form-check-label fw-semibold" for="taxable">Sujeto a impuesto</label>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="form-check form-switch border rounded-3 p-3 ps-5">
+                    <input class="form-check-input" type="checkbox" id="perishable" name="perishable" value="1" @checked(old('perishable', $product->perishable))>
+                    <label class="form-check-label fw-semibold" for="perishable">Perecedero</label>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="form-check form-switch border rounded-3 p-3 ps-5">
+                    <input class="form-check-input" type="checkbox" id="inventoryable" name="inventoryable" value="1" @checked(old('inventoryable', $product->inventoryable ?? true))>
+                    <label class="form-check-label fw-semibold" for="inventoryable">Inventariable</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <label for="expires_at" class="form-label fw-semibold">Fecha de vencimiento</label>
+        <input id="expires_at" type="date" name="expires_at" value="{{ old('expires_at', optional($product->expires_at)->format('Y-m-d')) }}" class="form-control">
+        @error('expires_at') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
     </div>
 
     <div class="col-md-12">
-        <label for="proveedor" class="form-label fw-semibold">Proveedor</label>
-        <input id="proveedor" name="proveedor" value="{{ old('proveedor', $product->proveedor) }}" maxlength="160" class="form-control">
+        <label for="proveedor" class="form-label fw-semibold">Proveedores</label>
+        <input
+            id="proveedor"
+            name="proveedor"
+            value="{{ old('proveedor', $product->exists ? $product->supplierNames() : $product->proveedor) }}"
+            maxlength="160"
+            class="form-control"
+            placeholder="Ejemplo: Dulce Hogar, CasaPlus, HomeCare"
+        >
+        <div class="form-text">Separa varios proveedores con comas.</div>
         @error('proveedor') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
     </div>
 
@@ -76,14 +144,21 @@
     </div>
 
     <div class="col-md-12">
-        <label for="image" class="form-label fw-semibold">Imagen del producto JPG/JPEG</label>
-        <input id="image" type="file" name="image" accept=".jpg,.jpeg,image/jpeg" class="form-control">
-        <div class="form-text">Sube una imagen sencilla para presentar el producto. Maximo 2 MB.</div>
-        @error('image') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+        <label for="images" class="form-label fw-semibold">Imagenes del producto JPG/JPEG</label>
+        <input id="images" type="file" name="images[]" accept=".jpg,.jpeg,image/jpeg" multiple class="form-control">
+        <div class="form-text">Puedes subir hasta 8 imagenes. Cada archivo debe pesar maximo 2 MB.</div>
+        @error('images') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+        @error('images.*') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
 
-        @if ($product->image_path)
-            <div class="mt-3">
-                <img src="{{ asset('storage/' . $product->image_path) }}" alt="{{ $product->nombre }}" class="rounded border" style="width: 120px; height: 90px; object-fit: cover;">
+        @php
+            $productImages = $product->exists ? $product->images : collect();
+        @endphp
+
+        @if ($productImages->isNotEmpty())
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                @foreach ($productImages as $image)
+                    <img src="{{ asset('storage/' . $image->path) }}" alt="{{ $product->nombre }}" class="rounded border" style="width: 120px; height: 90px; object-fit: cover;">
+                @endforeach
             </div>
         @endif
     </div>

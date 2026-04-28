@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CashRegister;
 use App\Models\Movement;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
@@ -46,6 +47,9 @@ class InventoryController extends Controller
         $data = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'cantidad' => ['required', 'integer', 'min:1'],
+            'metodo_pago' => ['required', 'in:efectivo,tarjeta,transferencia'],
+            'comprobante' => ['required', 'in:ticket,factura'],
+            'efectivo_recibido' => ['required_if:metodo_pago,efectivo', 'nullable', 'numeric', 'min:0'],
         ]);
 
         $movement = DB::transaction(function () use ($data) {
@@ -75,9 +79,23 @@ class InventoryController extends Controller
         $data = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'cantidad' => ['required', 'integer', 'min:1'],
+            'metodo_pago' => ['required', 'in:efectivo,tarjeta,transferencia'],
+            'comprobante' => ['required', 'in:ticket,factura'],
+            'efectivo_recibido' => ['required_if:metodo_pago,efectivo', 'nullable', 'numeric', 'min:0'],
         ]);
 
         $movement = DB::transaction(function () use ($data) {
+            $cashRegister = CashRegister::where('status', 'open')
+                ->lockForUpdate()
+                ->latest('opened_at')
+                ->first();
+
+            if (! $cashRegister) {
+                throw ValidationException::withMessages([
+                    'caja' => 'Debes abrir caja antes de procesar ventas.',
+                ]);
+            }
+
             $product = Product::whereKey($data['product_id'])
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -88,14 +106,33 @@ class InventoryController extends Controller
                 ]);
             }
 
+            $total = (float) $product->sale_price_1 * (int) $data['cantidad'];
+
+            if ($data['metodo_pago'] === 'efectivo' && (float) $data['efectivo_recibido'] < $total) {
+                throw ValidationException::withMessages([
+                    'efectivo_recibido' => 'El efectivo recibido no cubre el total de la venta.',
+                ]);
+            }
+
             $product->decrement('stock', $data['cantidad']);
 
-            return Movement::create([
+            $movement = Movement::create([
                 'product_id' => $product->id,
                 'tipo' => 'venta',
                 'cantidad' => $data['cantidad'],
                 'user_id' => auth()->id(),
             ]);
+
+            $cashRegister->movements()->create([
+                'type' => 'sale',
+                'amount' => $total,
+                'description' => "Venta {$data['comprobante']} - {$product->nombre}",
+                'reference_type' => Movement::class,
+                'reference_id' => $movement->id,
+                'user_id' => auth()->id(),
+            ]);
+
+            return $movement;
         });
 
         return $this->inventoryResponse(
@@ -122,7 +159,7 @@ class InventoryController extends Controller
         $search = trim((string) $request->query('search', ''));
 
         return Product::query()
-            ->with(['brand', 'category'])
+            ->with(['brand', 'category', 'presentation', 'suppliers'])
             ->when($onlyAvailable, fn ($query) => $query->where('stock', '>', 0))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
@@ -130,8 +167,10 @@ class InventoryController extends Controller
                         ->where('nombre', 'like', "%{$search}%")
                         ->orWhere('sku', 'like', "%{$search}%")
                         ->orWhere('barcode', 'like', "%{$search}%")
+                        ->orWhere('proveedor', 'like', "%{$search}%")
                         ->orWhereHas('brand', fn ($query) => $query->where('nombre', 'like', "%{$search}%"))
-                        ->orWhereHas('category', fn ($query) => $query->where('nombre', 'like', "%{$search}%"));
+                        ->orWhereHas('category', fn ($query) => $query->where('nombre', 'like', "%{$search}%"))
+                        ->orWhereHas('suppliers', fn ($query) => $query->where('name', 'like', "%{$search}%"));
                 });
             })
             ->orderBy('nombre')

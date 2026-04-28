@@ -12,17 +12,36 @@
         </div>
         <div class="d-grid d-sm-flex gap-2 w-100 w-sm-auto">
             <a href="{{ route('products.index') }}" class="btn btn-outline-secondary">Volver</a>
-            @if (auth()->user()->role === 'admin')
+            @can('manage-products')
                 <a href="{{ route('products.edit', $product) }}" class="btn btn-primary">Editar</a>
-            @endif
+            @endcan
         </div>
     </div>
 
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm">
-                @if ($product->image_path)
-                    <img src="{{ asset('storage/' . $product->image_path) }}" alt="{{ $product->nombre }}" class="card-img-top" style="max-height: 320px; object-fit: cover;">
+                @if ($product->images->isNotEmpty())
+                    <div id="productDetailImagesCarousel" class="carousel slide" data-bs-interval="false">
+                        <div class="carousel-inner">
+                            @foreach ($product->images as $image)
+                                <div class="carousel-item @if ($loop->first) active @endif">
+                                    <img src="{{ asset('storage/' . $image->path) }}" alt="{{ $product->nombre }}" class="d-block w-100" style="max-height: 360px; object-fit: cover;">
+                                </div>
+                            @endforeach
+                        </div>
+
+                        @if ($product->images->count() > 1)
+                            <button class="carousel-control-prev" type="button" data-bs-target="#productDetailImagesCarousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Imagen anterior</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#productDetailImagesCarousel" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Imagen siguiente</span>
+                            </button>
+                        @endif
+                    </div>
                 @endif
                 <div class="card-body p-4">
                     <h2 class="h5 mb-4">Informacion general</h2>
@@ -37,12 +56,16 @@
                             <div>{{ $product->brand?->nombre ?? 'Sin marca' }}</div>
                         </div>
                         <div class="col-md-6">
+                            <div class="text-muted small fw-semibold text-uppercase">Presentacion</div>
+                            <div>{{ $product->presentation?->nombre ?? 'Sin presentacion' }}</div>
+                        </div>
+                        <div class="col-md-6">
                             <div class="text-muted small fw-semibold text-uppercase">Codigo de barras</div>
                             <div>{{ $product->barcode ?: 'Sin codigo' }}</div>
                         </div>
                         <div class="col-md-6">
-                            <div class="text-muted small fw-semibold text-uppercase">Proveedor</div>
-                            <div>{{ $product->proveedor ?: 'Sin proveedor' }}</div>
+                            <div class="text-muted small fw-semibold text-uppercase">Proveedores</div>
+                            <div>{{ $product->supplierNames() }}</div>
                         </div>
                     </div>
 
@@ -50,6 +73,24 @@
 
                     <h3 class="h6 text-muted text-uppercase">Descripcion</h3>
                     <p class="mb-0">{{ $product->descripcion ?: 'Sin descripcion registrada.' }}</p>
+
+                    <hr>
+
+                    <h3 class="h6 text-muted text-uppercase">Condiciones</h3>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge {{ $product->taxable ? 'text-bg-info' : 'text-bg-secondary' }}">
+                            {{ $product->taxable ? 'Sujeto a impuesto' : 'Sin impuesto' }}
+                        </span>
+                        <span class="badge {{ $product->perishable ? 'text-bg-warning' : 'text-bg-secondary' }}">
+                            {{ $product->perishable ? 'Perecedero' : 'No perecedero' }}
+                        </span>
+                        <span class="badge {{ $product->inventoryable ? 'text-bg-success' : 'text-bg-secondary' }}">
+                            {{ $product->inventoryable ? 'Inventariable' : 'No inventariable' }}
+                        </span>
+                        @if ($product->expires_at)
+                            <span class="badge text-bg-danger">Vence {{ $product->expires_at->format('d/m/Y') }}</span>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>
@@ -75,15 +116,26 @@
                         </div>
                         <div class="col-6">
                             <div class="bg-light rounded p-3">
-                                <div class="text-muted small fw-semibold text-uppercase">Precio</div>
-                                <div class="h4 mb-0">C$ {{ number_format((float) $product->precio, 2) }}</div>
+                                <div class="text-muted small fw-semibold text-uppercase">Venta 1</div>
+                                <div class="h4 mb-0">C$ {{ number_format((float) $product->sale_price_1, 2) }}</div>
                             </div>
                         </div>
                     </div>
 
                     <div class="mt-3 bg-light rounded p-3">
+                        <div class="text-muted small fw-semibold text-uppercase">Precio de compra</div>
+                        <div class="h4 mb-0">C$ {{ number_format((float) $product->purchase_price, 2) }}</div>
+                    </div>
+
+                    <div class="mt-3 bg-light rounded p-3">
+                        <div class="text-muted small fw-semibold text-uppercase">Precios alternos</div>
+                        <div>Venta 2: C$ {{ number_format((float) ($product->sale_price_2 ?? 0), 2) }}</div>
+                        <div>Venta 3: C$ {{ number_format((float) ($product->sale_price_3 ?? 0), 2) }}</div>
+                    </div>
+
+                    <div class="mt-3 bg-light rounded p-3">
                         <div class="text-muted small fw-semibold text-uppercase">Valor en inventario</div>
-                        <div class="h4 mb-0">C$ {{ number_format($product->stock * (float) $product->precio, 2) }}</div>
+                        <div class="h4 mb-0">C$ {{ number_format($product->stock * (float) $product->purchase_price, 2) }}</div>
                     </div>
 
                     @if ($product->isLowStock())

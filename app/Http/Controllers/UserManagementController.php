@@ -2,27 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class UserManagementController extends Controller
 {
-    private const ROLES = ['admin', 'empleado', 'invitado'];
-
     public function index(Request $request): View
     {
         $search = trim((string) $request->query('search', ''));
 
         $users = User::query()
+            ->with('roles')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query
                         ->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('role', 'like', "%{$search}%");
+                        ->orWhereHas('roles', fn ($query) => $query->where('label', 'like', "%{$search}%"));
                 });
             })
             ->orderBy('name')
@@ -32,7 +31,6 @@ class UserManagementController extends Controller
         return view('users.index', [
             'users' => $users,
             'search' => $search,
-            'roles' => self::ROLES,
         ]);
     }
 
@@ -43,8 +41,8 @@ class UserManagementController extends Controller
         }
 
         return view('users.edit', [
-            'user' => $user,
-            'roles' => self::ROLES,
+            'user' => $user->load('roles'),
+            'roles' => Role::query()->with('permissions')->orderBy('label')->get(),
         ]);
     }
 
@@ -55,13 +53,14 @@ class UserManagementController extends Controller
         }
 
         $data = $request->validate([
-            'role' => ['required', Rule::in(self::ROLES)],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['integer', 'exists:roles,id'],
         ]);
 
-        $user->update($data);
+        $user->roles()->sync($data['roles']);
 
         return redirect()
             ->route('users.index')
-            ->with('success', 'Rol de usuario actualizado correctamente.');
+            ->with('success', 'Roles de usuario actualizados correctamente.');
     }
 }

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Sistema de Inventario')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
             background: #f5f7fb;
@@ -27,12 +28,22 @@
             color: #cbd5e1;
             border-radius: .5rem;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: .65rem;
         }
 
         .sidebar .nav-link:hover,
         .sidebar .nav-link.active {
             background: #1f2937;
             color: #ffffff;
+        }
+
+        .sidebar .nav-link i {
+            width: 1.1rem;
+            flex: 0 0 1.1rem;
+            text-align: center;
+            color: #93c5fd;
         }
 
         .topbar {
@@ -179,20 +190,75 @@
             </div>
 
             <nav class="nav flex-column gap-2">
-                <a href="{{ route('home') }}" class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}">Home</a>
-                <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}">Catalogo</a>
+                <a href="{{ route('home') }}" class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}">
+                    <i class="bi bi-house-door"></i>
+                    <span>Home</span>
+                </a>
+                <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}">
+                    <i class="bi bi-grid"></i>
+                    <span>Catalogo</span>
+                </a>
 
                 @auth
-                    @if (auth()->user()->role === 'admin')
-                        <a href="{{ route('products.create') }}" class="nav-link">Nuevo producto</a>
-                        <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">Usuarios</a>
-                        <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">Reportes</a>
-                    @endif
+                    @can('create-products')
+                        <a href="{{ route('products.create') }}" class="nav-link">
+                            <i class="bi bi-plus-square"></i>
+                            <span>Nuevo producto</span>
+                        </a>
+                    @endcan
 
-                    @if (auth()->user()->role === 'empleado')
-                        <a href="{{ route('inventory.entries.index') }}" class="nav-link {{ request()->routeIs('inventory.entries.*') ? 'active' : '' }}">Entradas</a>
-                        <a href="{{ route('inventory.sales.index') }}" class="nav-link {{ request()->routeIs('inventory.sales.*') ? 'active' : '' }}">Ventas</a>
-                    @endif
+                    @can('manage-products')
+                        <a href="{{ route('warehouse.index') }}" class="nav-link {{ request()->routeIs('warehouse.*') ? 'active' : '' }}">
+                            <i class="bi bi-box-seam"></i>
+                            <span>Almacen</span>
+                        </a>
+                    @endcan
+
+                    @can('manage-users')
+                        <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                            <i class="bi bi-people"></i>
+                            <span>Usuarios</span>
+                        </a>
+                    @endcan
+
+                    @can('view-reports')
+                        <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                            <i class="bi bi-bar-chart"></i>
+                            <span>Reportes</span>
+                        </a>
+                    @endcan
+
+                    @can('manage-inventory')
+                        <a href="{{ route('inventory.entries.index') }}" class="nav-link {{ request()->routeIs('inventory.entries.*') ? 'active' : '' }}">
+                            <i class="bi bi-box-arrow-in-down"></i>
+                            <span>Entradas</span>
+                        </a>
+                        <a href="{{ route('inventory.sales.index') }}" class="nav-link {{ request()->routeIs('inventory.sales.*') ? 'active' : '' }}">
+                            <i class="bi bi-cart-check"></i>
+                            <span>Ventas</span>
+                        </a>
+                    @endcan
+
+                    @can('manage-cash')
+                        <a href="{{ route('cash.index') }}" class="nav-link {{ request()->routeIs('cash.*') ? 'active' : '' }}">
+                            <i class="bi bi-cash-stack"></i>
+                            <span>Caja</span>
+                        </a>
+                    @endcan
+
+                    @can('manage-quotes')
+                        <a href="{{ route('quotes.index') }}" class="nav-link {{ request()->routeIs('quotes.*') ? 'active' : '' }}">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span>Cotizaciones</span>
+                        </a>
+                    @endcan
+
+                    @can('manage-purchases')
+                        <a href="{{ route('purchases.index') }}" class="nav-link {{ request()->routeIs('purchases.*') || request()->routeIs('suppliers.*') ? 'active' : '' }}">
+                            <i class="bi bi-bag-check"></i>
+                            <span>Compras</span>
+                        </a>
+                    @endcan
                 @endauth
             </nav>
         </aside>
@@ -207,7 +273,9 @@
                     @auth
                         <div class="user-actions">
                             <div class="fw-semibold text-truncate">{{ auth()->user()->name }}</div>
-                            <div class="text-muted small text-capitalize">{{ auth()->user()->role }}</div>
+                            @if (auth()->user()->primaryRoleName())
+                                <div class="text-muted small">{{ auth()->user()->primaryRoleName() }}</div>
+                            @endif
                         </div>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -222,6 +290,93 @@
 
             <main class="content-area">
                 <div class="container-fluid content-container px-0">
+                    @php
+                        $routeName = request()->route()?->getName();
+                        $breadcrumbs = [
+                            ['label' => 'Home', 'url' => route('home')],
+                        ];
+
+                        if ($routeName) {
+                            if (request()->routeIs('warehouse.*')) {
+                                $breadcrumbs[] = ['label' => 'Almacen', 'url' => route('warehouse.index')];
+
+                                if (request()->routeIs('warehouse.categories.*')) {
+                                    $breadcrumbs[] = ['label' => 'Categorias', 'url' => null];
+                                } elseif (request()->routeIs('warehouse.brands.*')) {
+                                    $breadcrumbs[] = ['label' => 'Marcas', 'url' => null];
+                                } elseif (request()->routeIs('warehouse.presentations.*')) {
+                                    $breadcrumbs[] = ['label' => 'Presentaciones', 'url' => null];
+                                } elseif (request()->routeIs('warehouse.perishables')) {
+                                    $breadcrumbs[] = ['label' => 'Productos perecederos', 'url' => null];
+                                }
+                            } elseif (request()->routeIs('products.*')) {
+                                $breadcrumbs[] = ['label' => 'Catalogo', 'url' => route('products.index')];
+
+                                if (request()->routeIs('products.create')) {
+                                    $breadcrumbs[] = ['label' => 'Nuevo producto', 'url' => null];
+                                } elseif (request()->routeIs('products.edit')) {
+                                    $breadcrumbs[] = ['label' => 'Editar producto', 'url' => null];
+                                } elseif (request()->routeIs('products.show')) {
+                                    $breadcrumbs[] = ['label' => 'Detalle', 'url' => null];
+                                }
+                            } elseif (request()->routeIs('inventory.entries.*')) {
+                                $breadcrumbs[] = ['label' => 'Inventario', 'url' => null];
+                                $breadcrumbs[] = ['label' => 'Entradas', 'url' => null];
+                            } elseif (request()->routeIs('inventory.sales.*')) {
+                                $breadcrumbs[] = ['label' => 'Inventario', 'url' => null];
+                                $breadcrumbs[] = ['label' => 'Ventas', 'url' => null];
+                            } elseif (request()->routeIs('cash.*')) {
+                                $breadcrumbs[] = ['label' => 'Caja', 'url' => null];
+                            } elseif (request()->routeIs('reports.*')) {
+                                $breadcrumbs[] = ['label' => 'Reportes', 'url' => null];
+                            } elseif (request()->routeIs('quotes.*')) {
+                                $breadcrumbs[] = ['label' => 'Cotizaciones', 'url' => route('quotes.index')];
+
+                                if (request()->routeIs('quotes.create')) {
+                                    $breadcrumbs[] = ['label' => 'Generar', 'url' => null];
+                                } elseif (request()->routeIs('quotes.show')) {
+                                    $breadcrumbs[] = ['label' => 'Detalle', 'url' => null];
+                                }
+                            } elseif (request()->routeIs('purchases.*') || request()->routeIs('suppliers.*')) {
+                                $breadcrumbs[] = ['label' => 'Compras', 'url' => route('purchases.index')];
+
+                                if (request()->routeIs('purchases.create')) {
+                                    $breadcrumbs[] = ['label' => 'Realizar compra', 'url' => null];
+                                } elseif (request()->routeIs('purchases.credits')) {
+                                    $breadcrumbs[] = ['label' => 'Compras al credito', 'url' => null];
+                                } elseif (request()->routeIs('purchases.price-history')) {
+                                    $breadcrumbs[] = ['label' => 'Historial de precios', 'url' => null];
+                                } elseif (request()->routeIs('purchases.show')) {
+                                    $breadcrumbs[] = ['label' => 'Detalle', 'url' => null];
+                                } elseif (request()->routeIs('suppliers.*')) {
+                                    $breadcrumbs[] = ['label' => 'Proveedores', 'url' => null];
+                                }
+                            } elseif (request()->routeIs('users.*')) {
+                                $breadcrumbs[] = ['label' => 'Usuarios', 'url' => route('users.index')];
+
+                                if (request()->routeIs('users.edit')) {
+                                    $breadcrumbs[] = ['label' => 'Editar roles', 'url' => null];
+                                }
+                            }
+                        }
+                    @endphp
+
+                    @if (count($breadcrumbs) > 1)
+                        <nav aria-label="breadcrumb" class="mb-3">
+                            <ol class="breadcrumb mb-0 small">
+                                @foreach ($breadcrumbs as $breadcrumb)
+                                    @if ($loop->last || ! $breadcrumb['url'])
+                                        <li class="breadcrumb-item active" aria-current="page">{{ $breadcrumb['label'] }}</li>
+                                    @else
+                                        <li class="breadcrumb-item">
+                                            <a href="{{ $breadcrumb['url'] }}" class="text-decoration-none">{{ $breadcrumb['label'] }}</a>
+                                        </li>
+                                    @endif
+                                @endforeach
+                            </ol>
+                        </nav>
+                    @endif
+
                     @if (session('success'))
                         <div class="alert alert-success">{{ session('success') }}</div>
                     @endif

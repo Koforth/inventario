@@ -21,9 +21,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Gate::define('view-catalog', fn (?User $user = null) => true);
-        Gate::define('manage-products', fn (User $user) => $user->isAdmin());
-        Gate::define('view-reports', fn (User $user) => $user->isAdmin());
-        Gate::define('manage-inventory', fn (User $user) => $user->isEmployee());
+        foreach (['view-catalog', 'create-products', 'manage-products', 'manage-inventory', 'manage-quotes', 'manage-purchases', 'manage-cash', 'view-reports', 'manage-users'] as $permission) {
+            Gate::define($permission, fn (User $user) => $user->hasPermission($permission));
+        }
     }
 }

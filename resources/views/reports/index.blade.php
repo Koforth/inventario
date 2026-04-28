@@ -38,6 +38,18 @@
 
     <div class="table-card mb-4">
         <div class="border-bottom p-3 p-md-4">
+            <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center gap-3 mb-4">
+                <div>
+                    <h2 class="h5 mb-1">Movimientos</h2>
+                    <div class="text-muted small">Detalle filtrado de entradas, ventas, mermas y traslados.</div>
+                </div>
+                <a
+                    href="{{ route('reports.export', request()->only(['tipo', 'date_from', 'date_to', 'search'])) }}"
+                    class="btn btn-success w-100 w-sm-auto"
+                >
+                    Descargar Excel
+                </a>
+            </div>
             <form method="GET" action="{{ route('reports.index') }}" class="row g-3 align-items-end">
                 <div class="col-md-3">
                     <label for="tipo" class="form-label fw-semibold">Tipo de movimiento</label>

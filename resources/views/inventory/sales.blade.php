@@ -78,7 +78,7 @@
                                             @endif
                                         </div>
                                     </td>
-                                    <td class="text-end">C$ {{ number_format((float) $product->precio, 2) }}</td>
+                                    <td class="text-end">C$ {{ number_format((float) $product->sale_price_1, 2) }}</td>
                                     <td class="text-center fw-bold">{{ $product->stock }}</td>
                                     <td class="text-center">
                                         @if ($product->isLowStock())
@@ -87,21 +87,20 @@
                                             <span class="badge text-bg-success">Disponible</span>
                                         @endif
                                     </td>
-                                    <td>
-                                        <form method="POST" action="{{ route('inventory.sales.process') }}" class="d-flex gap-2">
-                                            @csrf
-                                            <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                            <input
-                                                type="number"
-                                                name="cantidad"
-                                                min="1"
-                                                max="{{ $product->stock }}"
-                                                class="form-control"
-                                                placeholder="Cantidad"
-                                                required
-                                            >
-                                            <button class="btn btn-success">Vender</button>
-                                        </form>
+                                    <td class="text-end">
+                                        <button
+                                            type="button"
+                                            class="btn btn-success btn-sm"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#saleModal"
+                                            data-product-id="{{ $product->id }}"
+                                            data-product-name="{{ $product->nombre }}"
+                                            data-product-sku="{{ $product->sku }}"
+                                            data-product-price="{{ (float) $product->sale_price_1 }}"
+                                            data-product-stock="{{ $product->stock }}"
+                                        >
+                                            Vender
+                                        </button>
                                     </td>
                                 </tr>
                             @empty
@@ -151,4 +150,157 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="saleModal" tabindex="-1" aria-label="Facturar venta" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <form method="POST" action="{{ route('inventory.sales.process') }}" id="saleForm">
+                    @csrf
+                    <input type="hidden" name="product_id" id="saleProductId">
+
+                    <div class="modal-header border-0 pb-0">
+                        <div>
+                            <h2 class="h5 mb-1">Facturar venta</h2>
+                            <div class="text-muted small" id="saleProductMeta">Seleccione un producto</div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold">Producto</label>
+                                <input id="saleProductName" class="form-control" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Precio unitario</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">C$</span>
+                                    <input id="saleUnitPrice" class="form-control" readonly>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="saleQuantity" class="form-label fw-semibold">Cantidad *</label>
+                                <input id="saleQuantity" name="cantidad" type="number" min="1" class="form-control" required>
+                                <div class="form-text" id="saleStockText"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="saleReceipt" class="form-label fw-semibold">Comprobante</label>
+                                <select id="saleReceipt" name="comprobante" class="form-select" required>
+                                    <option value="ticket">Ticket</option>
+                                    <option value="factura">Factura</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="salePaymentMethod" class="form-label fw-semibold">Metodo de pago</label>
+                                <select id="salePaymentMethod" name="metodo_pago" class="form-select" required>
+                                    <option value="efectivo">Efectivo</option>
+                                    <option value="tarjeta">Tarjeta</option>
+                                    <option value="transferencia">Transferencia</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">A pagar *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">C$</span>
+                                    <input id="saleTotal" class="form-control" readonly value="0.00">
+                                </div>
+                            </div>
+                            <div class="col-md-4" id="cashReceivedGroup">
+                                <label for="saleCashReceived" class="form-label fw-semibold">Efectivo recibido *</label>
+                                <div class="input-group">
+                                    <button class="btn btn-outline-secondary" type="button" data-cash-step="-10">-</button>
+                                    <input id="saleCashReceived" name="efectivo_recibido" type="number" min="0" step="0.01" class="form-control text-end" value="0.00">
+                                    <button class="btn btn-outline-secondary" type="button" data-cash-step="10">+</button>
+                                </div>
+                            </div>
+                            <div class="col-md-4" id="saleChangeGroup">
+                                <label class="form-label fw-semibold">Cambio *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">C$</span>
+                                    <input id="saleChange" class="form-control" readonly value="0.00">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button class="btn btn-success">Facturar venta</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('saleModal');
+            const form = document.getElementById('saleForm');
+            const productId = document.getElementById('saleProductId');
+            const productName = document.getElementById('saleProductName');
+            const productMeta = document.getElementById('saleProductMeta');
+            const unitPrice = document.getElementById('saleUnitPrice');
+            const quantity = document.getElementById('saleQuantity');
+            const stockText = document.getElementById('saleStockText');
+            const paymentMethod = document.getElementById('salePaymentMethod');
+            const total = document.getElementById('saleTotal');
+            const cashReceived = document.getElementById('saleCashReceived');
+            const change = document.getElementById('saleChange');
+            const cashReceivedGroup = document.getElementById('cashReceivedGroup');
+            const changeGroup = document.getElementById('saleChangeGroup');
+
+            const money = (value) => Number(value || 0).toFixed(2);
+
+            const recalculate = () => {
+                const amount = Number(unitPrice.dataset.value || 0) * Number(quantity.value || 0);
+                const isCash = paymentMethod.value === 'efectivo';
+
+                total.value = money(amount);
+                cashReceivedGroup.classList.toggle('d-none', !isCash);
+                changeGroup.classList.toggle('d-none', !isCash);
+                cashReceived.required = isCash;
+
+                if (!isCash) {
+                    cashReceived.value = money(amount);
+                    change.value = '0.00';
+                    return;
+                }
+
+                change.value = money(Math.max(Number(cashReceived.value || 0) - amount, 0));
+            };
+
+            modal.addEventListener('show.bs.modal', (event) => {
+                const button = event.relatedTarget;
+                const price = Number(button.getAttribute('data-product-price') || 0);
+                const stock = Number(button.getAttribute('data-product-stock') || 0);
+
+                form.reset();
+                productId.value = button.getAttribute('data-product-id');
+                productName.value = button.getAttribute('data-product-name');
+                productMeta.textContent = `${button.getAttribute('data-product-sku')} - Stock disponible: ${stock}`;
+                unitPrice.dataset.value = price;
+                unitPrice.value = money(price);
+                quantity.max = stock;
+                quantity.value = 1;
+                stockText.textContent = `Disponible: ${stock}`;
+                cashReceived.value = money(price);
+                recalculate();
+            });
+
+            [quantity, paymentMethod, cashReceived].forEach((input) => {
+                input.addEventListener('input', recalculate);
+                input.addEventListener('change', recalculate);
+            });
+
+            modal.querySelectorAll('[data-cash-step]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    cashReceived.value = money(Number(cashReceived.value || 0) + Number(button.dataset.cashStep));
+                    recalculate();
+                });
+            });
+        });
+    </script>
 @endsection

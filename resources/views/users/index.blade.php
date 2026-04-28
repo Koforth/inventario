@@ -2,7 +2,7 @@
 
 @section('title', 'Usuarios | Sistema de Inventario')
 @section('page-title', 'Usuarios')
-@section('page-subtitle', 'Administracion de roles registrados en el sistema')
+@section('page-subtitle', 'Administracion de roles y permisos del sistema')
 
 @section('content')
     <div class="table-card">
@@ -30,7 +30,7 @@
                     <tr>
                         <th>Usuario</th>
                         <th>Correo</th>
-                        <th>Rol actual</th>
+                        <th>Roles actuales</th>
                         <th class="text-end">Acciones</th>
                     </tr>
                 </thead>
@@ -40,7 +40,11 @@
                             <td class="fw-semibold">{{ $user->name }}</td>
                             <td>{{ $user->email }}</td>
                             <td>
-                                <span class="badge text-bg-secondary text-capitalize">{{ $user->role }}</span>
+                                @forelse ($user->roles as $role)
+                                    <span class="badge text-bg-secondary">{{ $role->label }}</span>
+                                @empty
+                                    <span class="badge text-bg-light text-dark">Sin rol</span>
+                                @endforelse
                                 @if (auth()->id() === $user->id)
                                     <span class="badge text-bg-info ms-1">Sesion actual</span>
                                 @endif
@@ -50,7 +54,7 @@
                                     <button class="btn btn-outline-secondary btn-sm" disabled>No editable</button>
                                 @else
                                     <a href="{{ route('users.edit', $user) }}" class="btn btn-outline-primary btn-sm">
-                                        Cambiar rol
+                                        Cambiar roles
                                     </a>
                                 @endif
                             </td>

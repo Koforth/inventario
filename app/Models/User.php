@@ -30,13 +30,45 @@ class User extends Authenticatable
         ];
     }
 
-    public function isAdmin(): bool
+    public function roles()
     {
-        return $this->role === 'admin';
+        return $this->belongsToMany(Role::class)->withTimestamps();
     }
 
-    public function isEmployee(): bool
+    public function hasPermission(string $permission): bool
     {
-        return $this->role === 'empleado';
+        return $this->roles()
+            ->whereHas('permissions', fn ($query) => $query->where('name', $permission))
+            ->exists();
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->roles()
+            ->where('name', $role)
+            ->exists();
+    }
+
+    public function roleNames(): string
+    {
+        $roles = $this->relationLoaded('roles') ? $this->roles : $this->roles()->get();
+
+        return $roles->pluck('label')->join(', ') ?: 'Sin rol';
+    }
+
+    public function primaryRoleName(): ?string
+    {
+        $roles = $this->relationLoaded('roles') ? $this->roles : $this->roles()->get();
+        $priority = ['admin', 'agregar-productos', 'empleado'];
+
+        foreach ($priority as $roleName) {
+            $role = $roles->firstWhere('name', $roleName);
+
+            if ($role) {
+                return $role->label;
+            }
+        }
+
+        return null;
     }
 }

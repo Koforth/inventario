@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,8 +52,11 @@ class AuthController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
-            'role' => 'invitado',
         ]);
+
+        if ($role = Role::where('name', 'invitado')->first()) {
+            $user->roles()->attach($role);
+        }
 
         Auth::login($user);
         $request->session()->regenerate();
