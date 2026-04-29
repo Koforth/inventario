@@ -1,50 +1,52 @@
-# Manual del Sistema de Inventario
+# Manual Completo - Sistema de Inventario
 
-Sistema web en Laravel para administrar inventario, almacen, ventas, caja, compras, cotizaciones, usuarios, roles, permisos y reportes.
+Sistema web en Laravel para gestion comercial y operativa: catalogo, inventario, ventas, caja, compras, clientes, cotizaciones, apartados, credito, comprobantes, taller y reportes.
 
-## Tabla de Contenido
+## Tabla de contenido
 
-- [Descripcion general](#descripcion-general)
-- [Tecnologias](#tecnologias)
-- [Instalacion](#instalacion)
-- [Ejecucion](#ejecucion)
-- [Usuarios, roles y permisos](#usuarios-roles-y-permisos)
-- [Modulos del sistema](#modulos-del-sistema)
-- [Base de datos](#base-de-datos)
-- [Comandos utiles](#comandos-utiles)
-- [Notas operativas](#notas-operativas)
+1. [Resumen general](#resumen-general)
+2. [Tecnologias](#tecnologias)
+3. [Instalacion](#instalacion)
+4. [Ejecucion](#ejecucion)
+5. [Arquitectura de seguridad y acceso](#arquitectura-de-seguridad-y-acceso)
+6. [Roles y permisos implementados](#roles-y-permisos-implementados)
+7. [Modulo por modulo](#modulo-por-modulo)
+8. [Comprobantes y correlativos](#comprobantes-y-correlativos)
+9. [Mapa tecnico de rutas y middleware](#mapa-tecnico-de-rutas-y-middleware)
+10. [Estado actual de RBAC](#estado-actual-de-rbac)
+11. [Dashboard](#dashboard)
+12. [Base de datos](#base-de-datos)
+13. [Flujos operativos recomendados](#flujos-operativos-recomendados)
+14. [Comandos utiles](#comandos-utiles)
+15. [Notas operativas y soporte](#notas-operativas-y-soporte)
 
-## Descripcion General
+## Resumen general
 
-La aplicacion permite controlar productos, existencias, entradas, ventas, compras, proveedores, caja diaria, cotizaciones y reportes operativos.
+El sistema permite:
 
-Funciones principales:
-
-- Autenticacion de usuarios.
-- Roles multiples por usuario.
-- Permisos asociados a roles.
-- Catalogo de productos en grilla.
-- Modal carrusel para usuarios invitados/empleados.
-- Edicion directa para administradores.
-- Multiples imagenes JPG/JPEG por producto.
-- Proveedores multiples por producto.
-- Modulo Almacen.
-- Modulo Compras.
-- Modulo Caja.
-- Modulo Cotizaciones.
-- Reportes con exportacion Excel.
-- Breadcrumb global e iconos por modulo.
+- Gestionar productos con multiples imagenes, precio de compra y 3 precios de venta.
+- Controlar inventario por entradas, salidas, kardex y movimientos historicos.
+- Registrar ventas al contado y credito.
+- Gestionar apartados con abonos y finalizacion de venta.
+- Manejar caja diaria con apertura, cierre y movimientos.
+- Realizar compras y seguimiento de compras al credito.
+- Administrar clientes y limites crediticios.
+- Configurar tipos de comprobante y correlativos (tiraje).
+- Gestionar ordenes de taller y tecnicos.
+- Consultar reportes operativos y exportacion.
+- Administrar usuarios con roles y permisos.
 
 ## Tecnologias
 
-- PHP 8.3 o superior.
-- Laravel 13.
-- MySQL/MariaDB.
-- Composer.
-- Node.js y npm.
-- Vite.
-- Bootstrap 5.
-- Bootstrap Icons.
+- PHP 8.3+
+- Laravel 13
+- MySQL/MariaDB
+- Composer
+- Node.js + npm
+- Vite
+- Bootstrap 5
+- Bootstrap Icons
+- Spatie Laravel Permission (instalado)
 
 ## Instalacion
 
@@ -59,7 +61,7 @@ php artisan db:seed
 php artisan storage:link
 ```
 
-Configurar `.env` segun el entorno:
+Configurar `.env`:
 
 ```env
 APP_URL=http://127.0.0.1:8000
@@ -73,7 +75,7 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-Despues de cambiar `.env`:
+Aplicar cambios de configuracion:
 
 ```bash
 php artisan config:clear
@@ -81,399 +83,445 @@ php artisan config:clear
 
 ## Ejecucion
 
-Servidor Laravel:
+Backend:
 
 ```bash
 php artisan serve
 ```
 
-Servidor Vite:
+Frontend (Vite):
 
 ```bash
 npm.cmd run dev
 ```
 
-En PowerShell puede ser necesario usar `npm.cmd` si la politica de ejecucion bloquea `npm.ps1`.
+En PowerShell puede requerirse `npm.cmd` para evitar bloqueo de `npm.ps1`.
 
-## Usuarios, Roles y Permisos
+## Arquitectura de seguridad y acceso
 
-El sistema ya no valida por un unico campo `role`; ahora usa roles multiples y permisos.
+El control de acceso esta implementado en capas:
 
-Usuario inicial:
+1. **Menu / UI**: muestra modulos segun permisos.
+2. **Middleware de rutas**: cada modulo usa `can:<permiso>`.
+3. **Gate definitions**: permisos definidos en `AppServiceProvider`.
+4. **Bypass super-admin**: `Gate::before` autoriza todo para `super-admin`.
+5. **Controladores/rutas**: no depende solo del frontend.
 
-```text
-Correo: admin@example.com
-Clave: password
-```
+Esto protege web/API interna frente a acceso directo por URL.
 
-Roles iniciales:
+Adicionalmente:
 
-| Rol | Permisos principales |
-| --- | --- |
-| Administrador | Acceso completo. |
-| Empleado | Inventario, ventas, compras, caja y cotizaciones. |
-| Agregar productos | Catalogo y creacion de productos. |
-| Invitado | Catalogo basico. |
+- Los permisos se evalúan por `Gate::define` para cada modulo.
+- `super-admin` tiene bypass total con `Gate::before`.
+- El menu lateral usa `@can`, pero la proteccion real esta en rutas.
 
-Permisos registrados:
+## Roles y permisos implementados
 
-- `view-catalog`
-- `create-products`
-- `manage-products`
-- `manage-inventory`
-- `manage-quotes`
-- `manage-purchases`
-- `manage-cash`
-- `view-reports`
-- `manage-users`
+### Roles activos
 
-Notas:
+- `super-admin`
+- `administrador`
+- `vendedor-cajero`
+- `bodega-inventario`
+- `tecnico`
+- `contabilidad-caja`
+- `gerencia`
+- `invitado`
 
-- Un usuario puede tener varios roles.
-- Las rutas validan permisos, no nombres de rol.
-- En el topbar se muestra solo el rol de mayor privilegio.
-- Si el usuario solo tiene rol Invitado, no se muestra rol en topbar ni en la tarjeta de sesion.
+### Matriz resumida
 
-## Modulos del Sistema
+#### 1) Super Admin
 
-### Home
+- Acceso total.
+- Puede: usuarios, roles/permisos, configuracion, borrado, reportes completos.
 
-Ruta:
+#### 2) Administrador
 
-```text
-/home
-```
+- Home, Catalogo, Productos, Almacen, Reportes, Clientes, Ventas, Caja, Compras, Cotizaciones, Tecnicos, Taller, Apartados, Kardex, Comprobantes.
+- No: seguridad critica avanzada reservada a super-admin.
 
-Muestra la sesion activa y accesos principales segun permisos.
+#### 3) Vendedor / Cajero
 
-### Catalogo
+- Home, Clientes, Ventas, Caja, Cotizaciones, Apartados, Comprobantes.
+- No: Usuarios, Compras, Kardex, Almacen, reportes de control interno.
 
-Ruta:
+#### 4) Bodega / Inventario
 
-```text
-/products
-```
+- Catalogo, Nuevo producto, Almacen, Entradas, Kardex, Compras.
+- No: Caja, Usuarios, reportes financieros.
 
-Permite ver productos en grilla minimalista. Cada tarjeta muestra imagen, nombre y accion principal.
+#### 5) Tecnico
 
-Comportamiento:
+- Tecnicos, Taller, Clientes, Comprobantes.
+- Opcional organizacional: Apartados.
+- No: Caja, Compras, Usuarios.
 
-- Invitado y empleado ven detalle en modal carrusel.
-- Administrador sin rol empleado va directo a editar.
-- Administrador con rol empleado tambien puede ver el modal carrusel.
+#### 6) Contabilidad / Caja
 
-El modal muestra:
+- Caja, Reportes, Ventas, Compras, Comprobantes.
+- No: Usuarios, Taller, configuracion sensible.
 
-- Carrusel de imagenes del producto.
-- Datos generales.
-- Proveedores.
-- Presentacion.
-- Precios.
-- Stock.
-- Atributos: impuesto, perecedero e inventariable.
+#### 7) Gerencia
 
-### Productos
+- Reportes, Ventas, Compras, Caja, Kardex, Clientes.
+- Uso comun: lectura/supervision.
 
-Ruta de creacion:
+#### Invitado
 
-```text
-/products/create
-```
+- Se mantiene con acceso restringido y vista de bienvenida (sin dashboard operativo).
 
-Campos principales:
+### Permisos tecnicos principales
 
-- SKU.
-- Codigo de barras.
-- Nombre.
-- Categoria.
-- Marca.
-- Presentacion.
-- Stock.
-- Stock minimo.
-- Precio de compra.
-- Precio venta 1.
-- Precio venta 2.
-- Precio venta 3.
-- Proveedores separados por coma.
-- Sujeto a impuesto.
-- Perecedero.
-- Inventariable.
-- Fecha de vencimiento.
-- Descripcion.
-- Multiples imagenes JPG/JPEG.
+- `catalog.view`
+- `products.create`
+- `products.manage`
+- `warehouse.manage`
+- `inventory.entries.manage`
+- `kardex.manage`
+- `customers.manage`
+- `sales.manage`
+- `cash.manage`
+- `quotes.manage`
+- `layaways.manage`
+- `receipts.manage`
+- `purchases.manage`
+- `reports.view`
+- `technicians.manage`
+- `workshop.manage`
+- `users.manage`
+- `roles.manage`
+- `settings.manage`
+- `records.delete`
 
-Limites de imagenes:
+## Mapa tecnico de rutas y middleware
 
-- Hasta 8 imagenes por carga.
-- Maximo 2 MB por imagen.
-- Solo JPG/JPEG.
+Todas las rutas de negocio estan bajo `auth` y ademas en grupos `can:<permiso>`.
 
-### Almacen
+### Catalogo y productos
 
-Ruta:
+- `catalog.view`: `/products`, `/products/{product}`
+- `products.create`: `/products/create`, `POST /products`
+- `products.manage`: edicion/eliminacion de producto
 
-```text
-/warehouse
-```
+### Inventario y almacen
 
-Incluye:
+- `warehouse.manage`: `/warehouse`, categorias, marcas, presentaciones, perecederos
+- `inventory.entries.manage`: `/inventory/entries` (GET/POST)
+- `kardex.manage`: `/inventory/kardex` y `POST /inventory/kardex/move`
 
-- Gestion de categorias.
-- Gestion de marcas.
-- Gestion de presentaciones.
-- Acceso a productos.
-- Consulta de productos perecederos.
+### Ventas y clientes
 
-Productos perecederos:
+- `customers.manage`: `/customers` (GET/POST/PUT)
+- `sales.manage`: `/inventory/sales` y `POST /inventory/credit-sales/{sale}/payments`
+- `layaways.manage`: `/inventory/layaways` + abonos/finalizacion
+- `receipts.manage`: `/inventory/receipts` (tipos y correlativos)
 
-```text
-/warehouse/perishables
-```
+### Caja, compras, cotizaciones, reportes
 
-Permite consultar productos proximos a vencer segun cantidad de dias.
+- `cash.manage`: `/cash` + apertura/cierre/movimientos
+- `purchases.manage`: `/purchases`, `/suppliers`, creditos y abonos
+- `quotes.manage`: `/quotes`
+- `reports.view`: `/reports`, `/reports/export`
 
-### Entradas de Inventario
+### Taller y tecnicos
 
-Ruta:
-
-```text
-/inventory/entries
-```
-
-Permite registrar entradas de productos y aumentar stock.
-
-### Ventas
-
-Ruta:
-
-```text
-/inventory/sales
-```
-
-Permite procesar ventas mediante modal tipo facturacion.
-
-Incluye:
-
-- Producto.
-- Cantidad.
-- Comprobante: ticket o factura.
-- Metodo de pago: efectivo, tarjeta o transferencia.
-- Total a pagar.
-- Efectivo recibido.
-- Cambio automatico.
-
-Importante:
-
-- Para vender es necesario tener una caja abierta.
-- Al vender se descuenta stock.
-- La venta registra automaticamente un ingreso en caja.
-
-### Caja
-
-Ruta:
-
-```text
-/cash
-```
-
-Permite administrar la caja diaria.
-
-Funciones:
-
-- Abrir caja con monto inicial.
-- Cerrar caja.
-- Registrar ingresos manuales.
-- Registrar devoluciones.
-- Registrar prestamos.
-- Registrar gastos.
-- Ver movimientos de la caja abierta.
-
-Estadisticas:
-
-- Monto inicial.
-- Ingreso.
-- Devoluciones.
-- Prestamos.
-- Gastos.
-- Ingresos totales.
-- Egresos.
-- Saldo.
-
-### Cotizaciones
-
-Ruta:
-
-```text
-/quotes
-```
-
-Funciones:
-
-- Generar cotizaciones con varios productos.
-- Calcular subtotal, impuesto y total.
-- Guardar datos del cliente.
-- Ver detalle de cotizacion.
-- Consultar cotizaciones entre fechas.
-
-Rutas:
-
-```text
-/quotes
-/quotes/create
-/quotes/{quote}
-```
-
-### Compras
-
-Ruta:
-
-```text
-/purchases
-```
-
-Funciones:
-
-- Realizar compra.
-- Consultar compras por fechas.
-- Consultar compras por mes.
-- Ver compras al credito.
-- Registrar abonos.
-- Ver historial de precios.
-
-Realizar compra:
-
-```text
-/purchases/create
-```
-
-Permite:
-
-- Seleccionar proveedor.
-- Buscar/seleccionar productos por nombre, SKU o codigo.
-- Indicar cantidades.
-- Indicar costo unitario.
-- Elegir contado o credito.
-- Calcular subtotal, impuesto y total.
-
-Al guardar una compra:
-
-- Aumenta stock si el producto es inventariable.
-- Actualiza el precio de compra.
-- Guarda historial de precios.
-- Si es credito, registra saldo pendiente y abonos.
-
-Proveedores:
-
-```text
-/suppliers
-```
-
-Campos:
-
-- Nombre.
-- DNI.
-- RUC.
-- Contacto.
-- Telefono.
-- Correo.
-- Direccion.
-
-Historial de precios:
-
-```text
-/purchases/price-history
-```
-
-Compras al credito:
-
-```text
-/purchases/credits
-```
-
-### Reportes
-
-Ruta:
-
-```text
-/reports
-```
-
-Incluye:
-
-- Movimientos.
-- Ventas.
-- Entradas.
-- Mermas.
-- Traslados.
-- Bajo stock.
-- Valor de inventario.
-- Productos mas vendidos.
-- Exportacion Excel.
-
-Filtros:
-
-- Tipo de movimiento.
-- Fecha desde.
-- Fecha hasta.
-- Busqueda.
+- `technicians.manage`: `/inventory/technicians`
+- `workshop.manage`: `/inventory/workshop`
 
 ### Usuarios
 
-Ruta:
+- `users.manage`: `/users`, edicion de roles
 
-```text
-/users
-```
+## Estado actual de RBAC
 
-Permite:
+### Implementado actualmente
 
-- Buscar usuarios.
-- Ver roles actuales.
-- Asignar multiples roles.
-- Validar permisos asociados a roles.
+- Modelo local de roles/permisos con tablas:
+  - `roles`
+  - `permissions`
+  - `role_user`
+  - `permission_role`
+- `User::hasPermission()` consulta permisos via roles.
+- Gates definidos en `AppServiceProvider`.
+- Roles cargados/actualizados en `DatabaseSeeder`.
 
-Restriccion:
+### Spatie Laravel Permission
 
-- El usuario autenticado no puede modificarse a si mismo desde esta pantalla.
+- Paquete instalado en dependencias (`spatie/laravel-permission`).
+- En esta version, la autorizacion activa del sistema sigue usando el modelo local existente.
+- Si se desea migrar totalmente a Spatie (traits, tablas propias, middleware Spatie), se recomienda un plan de migracion controlado para no romper asignaciones actuales.
 
-## Base de Datos
+## Modulo por modulo
+
+### Home / Bienvenida
+
+- Ruta: `/home`
+- Para la mayoria de roles muestra dashboard.
+- Para `invitado` muestra pagina de bienvenida simple.
+
+### Dashboard
+
+Incluye:
+
+- Ventas del dia (cantidad y monto).
+- Estado de caja y flujo diario.
+- Bajo stock y valor de inventario.
+- Apartados pendientes y credito pendiente.
+- Ventas recientes.
+- Movimientos recientes.
+- Proximos retiros de apartados.
+- Resumen de taller y compras del mes.
+
+### Catalogo
+
+- Ruta: `/products`
+- Muestra tarjetas con imagen, nombre y precio.
+- Para roles de consulta usa modal carrusel.
+- Para roles de gestion redirige a edicion.
+
+### Productos
+
+- Crear: `/products/create`
+- Editar: `/products/{id}/edit`
+- Campos:
+  - SKU, barcode, nombre, descripcion
+  - categoria, marca, presentacion
+  - stock, stock minimo
+  - precio compra
+  - precio venta 1/2/3
+  - impuestos, perecedero, inventariable
+  - proveedores
+  - fecha vencimiento
+  - imagenes JPG/JPEG (hasta 8, max 2MB c/u)
+
+### Almacen
+
+- Ruta: `/warehouse`
+- Gestion de:
+  - categorias
+  - marcas
+  - presentaciones
+  - productos perecederos `/warehouse/perishables`
+
+### Entradas de inventario
+
+- Ruta: `/inventory/entries`
+- Registra entradas y aumenta stock.
+
+### Kardex
+
+- Ruta: `/inventory/kardex`
+- Apertura de inventario automatica por periodo mensual.
+- Consulta saldos/movimientos por producto y fechas.
+- Registro de entrada/salida de almacen.
+- Salida clasificada como `traslado` o `merma`.
+
+### Clientes
+
+- Ruta: `/customers`
+- Tipo de cliente: `cliente` o `empresa`.
+- Campos:
+  - nombre unico (cliente o empresa)
+  - dni, ruc
+  - telefono, email
+  - giro de negocio
+  - limite crediticio
+  - direccion
+  - estado vigente/inactivo
+
+### Ventas
+
+- Ruta: `/inventory/sales`
+- Carrito de venta rapida por nombre/SKU/barcode.
+- Seleccion por producto:
+  - cantidad
+  - precio 1/2/3
+  - descuento
+- Cobro:
+  - contado o credito
+  - efectivo, tarjeta o mixto
+  - cliente asociado
+  - comprobante configurable
+- Consulta de ventas:
+  - del dia
+  - por rango de fechas
+  - por mes
+
+### Apartados
+
+- Ruta: `/inventory/layaways`
+- Crear apartado con:
+  - productos
+  - cliente
+  - fecha/hora de retiro
+  - abono inicial
+- Descuenta stock al apartar (reserva).
+- Consultas:
+  - apartados del dia
+  - por rango
+  - por mes
+- Permite:
+  - abonar
+  - finalizar apartado
+  - generar venta al completar saldo
+
+### Ventas al credito
+
+- Integrado en modulo de apartados.
+- Lista ventas con saldo pendiente.
+- Registra abonos y actualiza `credit_balance`.
+
+### Caja
+
+- Ruta: `/cash`
+- Abrir caja (monto inicial).
+- Cerrar caja (arqueo final).
+- Movimientos manuales:
+  - ingresos
+  - devoluciones
+  - prestamos
+  - gastos
+- Registra ingresos de ventas y abonos.
+
+### Cotizaciones
+
+- Ruta: `/quotes`
+- Crear, listar, ver detalle.
+- Calcula subtotal, impuesto y total.
+
+### Compras
+
+- Ruta: `/purchases`
+- Crear compra contado/credito.
+- Registra items y costos.
+- Aumenta stock de productos inventariables.
+- Historial de precios.
+- Compras a credito y abonos.
+- Proveedores: `/suppliers`
+
+### Comprobantes
+
+- Ruta: `/inventory/receipts`
+- Configura tipos: FACTURA, BOLETA, TICKET, etc.
+- Configura tiraje:
+  - prefijo
+  - correlativo actual
+  - longitud (padding)
+- En venta se usa `receipt_type_id` y se genera `receipt_number` correlativo.
+
+### Tecnicos
+
+- Ruta: `/inventory/technicians`
+- Lista y registro de tecnicos:
+  - nombre
+  - telefono
+  - correo
+  - especialidad
+  - estado
+
+### Taller (ordenes de servicio)
+
+- Ruta: `/inventory/workshop`
+- Registro de orden considerando:
+  - cliente
+  - tecnico asignado
+  - aparato
+  - marca
+  - modelo
+  - serie
+  - averia
+  - observaciones
+  - costo del servicio
+
+### Reportes
+
+- Ruta: `/reports`
+- Incluye:
+  - movimientos
+  - ventas
+  - entradas
+  - mermas
+  - traslados
+  - bajo stock
+  - valor inventario
+- Exportacion disponible.
+
+### Usuarios
+
+- Ruta: `/users`
+- Gestion de usuarios y asignacion de roles.
+- Restriccion: usuario autenticado no se autoedita.
+
+## Comprobantes y correlativos
+
+### Tablas clave
+
+- `receipt_types`
+  - `name`
+  - `code`
+  - `prefix`
+  - `current_number`
+  - `padding`
+  - `is_active`
+
+- `sales`
+  - `receipt_type_id`
+  - `receipt_number`
+
+### Regla de correlativo
+
+1. Se bloquea el tipo de comprobante para concurrencia segura.
+2. Se calcula siguiente numero (`current_number + 1`).
+3. Se arma `prefijo + numero con padding`.
+4. Se guarda en la venta.
+5. Se incrementa `current_number`.
+
+## Base de datos
 
 Tablas principales:
 
-- `users`
-- `roles`
-- `permissions`
-- `role_user`
-- `permission_role`
-- `categories`
-- `brands`
-- `presentations`
-- `products`
-- `product_images`
-- `suppliers`
-- `product_supplier`
-- `movements`
-- `quotes`
-- `quote_items`
-- `purchases`
-- `purchase_items`
-- `purchase_payments`
-- `cash_registers`
-- `cash_movements`
+- Seguridad: `users`, `roles`, `permissions`, `role_user`, `permission_role`
+- Catalogo: `products`, `product_images`, `categories`, `brands`, `presentations`, `suppliers`, `product_supplier`
+- Inventario: `movements`, `inventory_periods`
+- Ventas: `sales`, `sale_items`, `sale_payments`
+- Clientes: `customers`
+- Apartados: `layaways`, `layaway_items`, `layaway_payments`
+- Compras: `purchases`, `purchase_items`, `purchase_payments`
+- Caja: `cash_registers`, `cash_movements`
+- Cotizaciones: `quotes`, `quote_items`
+- Taller: `technicians`, `workshop_orders`
+- Comprobantes: `receipt_types`
 
-Relaciones principales:
+## Flujos operativos recomendados
 
-- Un usuario tiene muchos roles.
-- Un rol tiene muchos permisos.
-- Un producto pertenece a categoria, marca y presentacion.
-- Un producto puede tener multiples imagenes.
-- Un producto puede tener multiples proveedores.
-- Un producto tiene muchos movimientos.
-- Una cotizacion tiene muchos items.
-- Una compra tiene muchos items y puede tener muchos abonos.
-- Una caja tiene muchos movimientos de caja.
+### Flujo 1 - Venta contado
 
-## Comandos Utiles
+1. Abrir caja.
+2. Ir a ventas.
+3. Agregar productos.
+4. Seleccionar comprobante.
+5. Cobrar y guardar.
+
+### Flujo 2 - Venta credito
+
+1. Registrar cliente con limite.
+2. Procesar venta en modo credito.
+3. Registrar abonos en modulo de apartados/credito.
+
+### Flujo 3 - Apartado
+
+1. Crear apartado con abono inicial.
+2. Consultar por fecha de retiro.
+3. Completar abonos.
+4. Finalizar apartado para convertir a venta.
+
+### Flujo 4 - Inventario
+
+1. Registrar entradas.
+2. Revisar kardex y salidas.
+3. Auditar bajo stock en dashboard/reportes.
+
+## Comandos utiles
 
 Migraciones:
 
@@ -481,7 +529,7 @@ Migraciones:
 php artisan migrate
 ```
 
-Recrear base y seed:
+Migrar limpio + seed:
 
 ```bash
 php artisan migrate:fresh --seed
@@ -493,7 +541,7 @@ Seeders:
 php artisan db:seed
 ```
 
-Limpiar cache:
+Cache:
 
 ```bash
 php artisan cache:clear
@@ -502,7 +550,7 @@ php artisan route:clear
 php artisan view:clear
 ```
 
-Ver rutas:
+Rutas:
 
 ```bash
 php artisan route:list
@@ -514,19 +562,17 @@ Pruebas:
 php artisan test
 ```
 
-Compilar assets:
+Build frontend:
 
 ```bash
 npm.cmd run build
 ```
 
-## Notas Operativas
+## Notas operativas y soporte
 
-- Abrir caja antes de procesar ventas.
-- Ejecutar `php artisan storage:link` para ver imagenes.
-- Cambiar la clave del usuario administrador inicial.
-- Asignar roles correctos a usuarios nuevos.
-- Usar proveedores separados por coma en productos.
-- Revisar productos perecederos desde Almacen.
-- Consultar compras al credito para registrar abonos.
-- Usar `APP_TIMEZONE=America/Managua` para que reportes y fechas usen hora local.
+- Mantener `APP_TIMEZONE=America/Managua`.
+- Verificar caja abierta antes de ventas/abonos.
+- Revisar tipos de comprobante activos antes de vender.
+- Ajustar correlativos en `Comprobantes` al inicio de operaciones.
+- Asignar roles segun perfil real del usuario, no por menu.
+- La seguridad esta en backend por middleware y gates, no solo por interfaz.
