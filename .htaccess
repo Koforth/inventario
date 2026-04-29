@@ -1,0 +1,8 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Wamp serves this project from /inventario, while Laravel's public
+    # document root is /inventario/public.
+    RewriteRule ^$ /inventario/public/ [R=302,L]
+    RewriteRule ^(.+)$ /inventario/public/$1 [R=302,L]
+</IfModule>
