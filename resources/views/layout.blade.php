@@ -194,14 +194,14 @@
                     <i class="bi bi-house-door"></i>
                     <span>Home</span>
                 </a>
-                <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}">
+                <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.index', 'products.show', 'products.edit') ? 'active' : '' }}">
                     <i class="bi bi-grid"></i>
                     <span>Catalogo</span>
                 </a>
 
                 @auth
                     @can('create-products')
-                        <a href="{{ route('products.create') }}" class="nav-link">
+                        <a href="{{ route('products.create') }}" class="nav-link {{ request()->routeIs('products.create') ? 'active' : '' }}">
                             <i class="bi bi-plus-square"></i>
                             <span>Nuevo producto</span>
                         </a>
@@ -309,12 +309,12 @@
                                 } elseif (request()->routeIs('warehouse.perishables')) {
                                     $breadcrumbs[] = ['label' => 'Productos perecederos', 'url' => null];
                                 }
+                            } elseif (request()->routeIs('products.create')) {
+                                $breadcrumbs[] = ['label' => 'Nuevo producto', 'url' => null];
                             } elseif (request()->routeIs('products.*')) {
                                 $breadcrumbs[] = ['label' => 'Catalogo', 'url' => route('products.index')];
 
-                                if (request()->routeIs('products.create')) {
-                                    $breadcrumbs[] = ['label' => 'Nuevo producto', 'url' => null];
-                                } elseif (request()->routeIs('products.edit')) {
+                                if (request()->routeIs('products.edit')) {
                                     $breadcrumbs[] = ['label' => 'Editar producto', 'url' => null];
                                 } elseif (request()->routeIs('products.show')) {
                                     $breadcrumbs[] = ['label' => 'Detalle', 'url' => null];
