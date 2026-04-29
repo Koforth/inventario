@@ -88,4 +88,9 @@ class Product extends Model
     {
         return $this->stock <= $this->stock_minimo;
     }
+
+    public function saleItems()
+    {
+        return $this->hasMany(SaleItem::class);
+    }
 }

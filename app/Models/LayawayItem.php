@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class LayawayItem extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'layaway_id',
+        'product_id',
+        'price_type',
+        'quantity',
+        'unit_price',
+        'discount',
+        'line_subtotal',
+        'line_total',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'unit_price' => 'decimal:2',
+            'discount' => 'decimal:2',
+            'line_subtotal' => 'decimal:2',
+            'line_total' => 'decimal:2',
+        ];
+    }
+
+    public function layaway()
+    {
+        return $this->belongsTo(Layaway::class);
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+}
+

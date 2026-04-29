@@ -7,21 +7,32 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
+        :root {
+            --topbar-height: 72px;
+        }
+
         body {
             background: #f5f7fb;
+            overflow: hidden;
         }
 
         .sidebar {
             width: 260px;
-            min-height: 100vh;
+            height: 100vh;
             flex: 0 0 260px;
             background: #111827;
             color: #e5e7eb;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
         }
 
         .main-panel {
             min-width: 0;
             flex: 1 1 auto;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         .sidebar .nav-link {
@@ -47,7 +58,7 @@
         }
 
         .topbar {
-            min-height: 72px;
+            min-height: var(--topbar-height);
             background: #ffffff;
             border-bottom: 1px solid #e5e7eb;
         }
@@ -79,6 +90,8 @@
 
         .content-area {
             padding: 2rem;
+            overflow-y: auto;
+            flex: 1 1 auto;
         }
 
         .content-container {
@@ -106,33 +119,46 @@
             }
 
             .sidebar {
-                position: sticky;
+                position: fixed;
                 top: 0;
+                left: 0;
+                bottom: 0;
                 z-index: 1030;
-                width: 100%;
-                min-height: auto;
+                width: min(80vw, 320px);
                 flex: 0 0 auto;
+                transform: translateX(-100%);
+                transition: transform .25s ease;
+                box-shadow: 0 0 0 rgba(0, 0, 0, 0);
             }
 
-            .sidebar .brand-block {
-                margin-bottom: 1rem !important;
+            .sidebar.open {
+                transform: translateX(0);
+                box-shadow: 0 8px 28px rgba(0, 0, 0, .35);
             }
 
-            .sidebar .nav {
-                flex-direction: row !important;
-                gap: .5rem !important;
-                overflow-x: auto;
-                padding-bottom: .25rem;
-                white-space: nowrap;
+            .sidebar-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, .35);
+                z-index: 1025;
+                display: none;
+            }
+
+            .sidebar-backdrop.show {
+                display: block;
             }
 
             .topbar {
                 height: auto;
-                min-height: 72px;
+                min-height: var(--topbar-height);
                 align-items: flex-start !important;
                 gap: 1rem;
                 padding-top: 1rem;
                 padding-bottom: 1rem;
+            }
+
+            .sidebar-toggle {
+                display: inline-flex !important;
             }
 
             .content-area {
@@ -151,6 +177,10 @@
 
             .topbar {
                 flex-direction: column;
+            }
+
+            .topbar .d-flex.align-items-center.gap-2 {
+                width: 100%;
             }
 
             .topbar .user-block {
@@ -179,11 +209,19 @@
                 width: auto !important;
             }
         }
+
+        @media (min-width: 992px) {
+            .sidebar-toggle,
+            .sidebar-backdrop {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
     <div class="app-shell d-flex min-vh-100">
-        <aside class="sidebar p-4">
+        <aside class="sidebar p-4" id="sidebar">
             <div class="brand-block mb-4">
                 <div class="text-uppercase text-info fw-bold small">sistema</div>
                 <h1 class="h4 mb-0 text-white">Inventario</h1>
@@ -200,60 +238,98 @@
                 </a>
 
                 @auth
-                    @can('create-products')
+                    @can('products.create')
                         <a href="{{ route('products.create') }}" class="nav-link {{ request()->routeIs('products.create') ? 'active' : '' }}">
                             <i class="bi bi-plus-square"></i>
                             <span>Nuevo producto</span>
                         </a>
                     @endcan
 
-                    @can('manage-products')
+                    @can('warehouse.manage')
                         <a href="{{ route('warehouse.index') }}" class="nav-link {{ request()->routeIs('warehouse.*') ? 'active' : '' }}">
                             <i class="bi bi-box-seam"></i>
                             <span>Almacen</span>
                         </a>
                     @endcan
 
-                    @can('manage-users')
+                    @can('users.manage')
                         <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
                             <i class="bi bi-people"></i>
                             <span>Usuarios</span>
                         </a>
                     @endcan
 
-                    @can('view-reports')
+                    @can('reports.view')
                         <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                             <i class="bi bi-bar-chart"></i>
                             <span>Reportes</span>
                         </a>
                     @endcan
 
-                    @can('manage-inventory')
+                    @can('customers.manage')
+                        <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
+                            <i class="bi bi-person-vcard"></i>
+                            <span>Clientes</span>
+                        </a>
+                    @endcan
+                    @can('inventory.entries.manage')
                         <a href="{{ route('inventory.entries.index') }}" class="nav-link {{ request()->routeIs('inventory.entries.*') ? 'active' : '' }}">
                             <i class="bi bi-box-arrow-in-down"></i>
                             <span>Entradas</span>
                         </a>
+                    @endcan
+                    @can('sales.manage')
                         <a href="{{ route('inventory.sales.index') }}" class="nav-link {{ request()->routeIs('inventory.sales.*') ? 'active' : '' }}">
                             <i class="bi bi-cart-check"></i>
                             <span>Ventas</span>
                         </a>
                     @endcan
+                    @can('kardex.manage')
+                        <a href="{{ route('inventory.kardex.index') }}" class="nav-link {{ request()->routeIs('inventory.kardex.*') ? 'active' : '' }}">
+                            <i class="bi bi-journal-text"></i>
+                            <span>Kardex</span>
+                        </a>
+                    @endcan
+                    @can('layaways.manage')
+                        <a href="{{ route('inventory.layaways.index') }}" class="nav-link {{ request()->routeIs('inventory.layaways.*') || request()->routeIs('inventory.credit-sales.*') ? 'active' : '' }}">
+                            <i class="bi bi-bookmark-check"></i>
+                            <span>Apartados</span>
+                        </a>
+                    @endcan
+                    @can('technicians.manage')
+                        <a href="{{ route('inventory.technicians.index') }}" class="nav-link {{ request()->routeIs('inventory.technicians.*') ? 'active' : '' }}">
+                            <i class="bi bi-person-gear"></i>
+                            <span>Tecnicos</span>
+                        </a>
+                    @endcan
+                    @can('workshop.manage')
+                        <a href="{{ route('inventory.workshop.index') }}" class="nav-link {{ request()->routeIs('inventory.workshop.*') ? 'active' : '' }}">
+                            <i class="bi bi-tools"></i>
+                            <span>Taller</span>
+                        </a>
+                    @endcan
+                    @can('receipts.manage')
+                        <a href="{{ route('inventory.receipts.index') }}" class="nav-link {{ request()->routeIs('inventory.receipts.*') ? 'active' : '' }}">
+                            <i class="bi bi-receipt"></i>
+                            <span>Comprobantes</span>
+                        </a>
+                    @endcan
 
-                    @can('manage-cash')
+                    @can('cash.manage')
                         <a href="{{ route('cash.index') }}" class="nav-link {{ request()->routeIs('cash.*') ? 'active' : '' }}">
                             <i class="bi bi-cash-stack"></i>
                             <span>Caja</span>
                         </a>
                     @endcan
 
-                    @can('manage-quotes')
+                    @can('quotes.manage')
                         <a href="{{ route('quotes.index') }}" class="nav-link {{ request()->routeIs('quotes.*') ? 'active' : '' }}">
                             <i class="bi bi-file-earmark-text"></i>
                             <span>Cotizaciones</span>
                         </a>
                     @endcan
 
-                    @can('manage-purchases')
+                    @can('purchases.manage')
                         <a href="{{ route('purchases.index') }}" class="nav-link {{ request()->routeIs('purchases.*') || request()->routeIs('suppliers.*') ? 'active' : '' }}">
                             <i class="bi bi-bag-check"></i>
                             <span>Compras</span>
@@ -265,9 +341,14 @@
 
         <div class="main-panel">
             <header class="topbar d-flex align-items-center justify-content-between px-4">
-                <div class="topbar-title">
-                    <div class="fw-bold">@yield('page-title', 'Catalogo de productos')</div>
-                    <div class="text-muted small">@yield('page-subtitle', 'Control de stock para productos del hogar')</div>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-outline-secondary btn-sm sidebar-toggle d-none" id="sidebarToggle" type="button" aria-label="Abrir menu">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <div class="topbar-title">
+                        <div class="fw-bold">@yield('page-title', 'Catalogo de productos')</div>
+                        <div class="text-muted small">@yield('page-subtitle', 'Control de stock para productos del hogar')</div>
+                    </div>
                 </div>
                 <div class="user-block d-flex align-items-center justify-content-end gap-3 text-end">
                     @auth
@@ -325,6 +406,24 @@
                             } elseif (request()->routeIs('inventory.sales.*')) {
                                 $breadcrumbs[] = ['label' => 'Inventario', 'url' => null];
                                 $breadcrumbs[] = ['label' => 'Ventas', 'url' => null];
+                            } elseif (request()->routeIs('inventory.kardex.*')) {
+                                $breadcrumbs[] = ['label' => 'Inventario', 'url' => null];
+                                $breadcrumbs[] = ['label' => 'Kardex', 'url' => null];
+                            } elseif (request()->routeIs('inventory.layaways.*') || request()->routeIs('inventory.credit-sales.*')) {
+                                $breadcrumbs[] = ['label' => 'Inventario', 'url' => null];
+                                $breadcrumbs[] = ['label' => 'Apartados', 'url' => null];
+                            } elseif (request()->routeIs('inventory.technicians.*')) {
+                                $breadcrumbs[] = ['label' => 'Inventario', 'url' => null];
+                                $breadcrumbs[] = ['label' => 'Tecnicos', 'url' => null];
+                            } elseif (request()->routeIs('inventory.workshop.*')) {
+                                $breadcrumbs[] = ['label' => 'Inventario', 'url' => null];
+                                $breadcrumbs[] = ['label' => 'Taller', 'url' => null];
+                            } elseif (request()->routeIs('inventory.receipts.*')) {
+                                $breadcrumbs[] = ['label' => 'Inventario', 'url' => null];
+                                $breadcrumbs[] = ['label' => 'Comprobantes', 'url' => null];
+                            } elseif (request()->routeIs('customers.*')) {
+                                $breadcrumbs[] = ['label' => 'Inventario', 'url' => null];
+                                $breadcrumbs[] = ['label' => 'Clientes', 'url' => null];
                             } elseif (request()->routeIs('cash.*')) {
                                 $breadcrumbs[] = ['label' => 'Caja', 'url' => null];
                             } elseif (request()->routeIs('reports.*')) {
@@ -388,5 +487,43 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('sidebarToggle');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            const mobileMedia = window.matchMedia('(max-width: 991.98px)');
+
+            const closeSidebar = () => {
+                if (!mobileMedia.matches) return;
+                sidebar.classList.remove('open');
+                backdrop.classList.remove('show');
+            };
+
+            const openSidebar = () => {
+                if (!mobileMedia.matches) return;
+                sidebar.classList.add('open');
+                backdrop.classList.add('show');
+            };
+
+            toggle?.addEventListener('click', () => {
+                if (sidebar.classList.contains('open')) {
+                    closeSidebar();
+                    return;
+                }
+                openSidebar();
+            });
+
+            backdrop?.addEventListener('click', closeSidebar);
+            sidebar?.querySelectorAll('a.nav-link').forEach((link) => link.addEventListener('click', closeSidebar));
+
+            window.addEventListener('resize', () => {
+                if (!mobileMedia.matches) {
+                    sidebar.classList.remove('open');
+                    backdrop.classList.remove('show');
+                }
+            });
+        });
+    </script>
 </body>
 </html>

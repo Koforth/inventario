@@ -88,6 +88,10 @@
                                     <a href="{{ route('products.edit', $product) }}" class="h6 mb-0 fw-bold text-decoration-none text-dark text-truncate">
                                         {{ $product->nombre }}
                                     </a>
+                                    <div>
+                                        <div class="text-muted small fw-semibold text-uppercase">Precio</div>
+                                        <div class="fw-bold">C$ {{ number_format((float) $product->sale_price_1, 2) }}</div>
+                                    </div>
                                     <a href="{{ route('products.edit', $product) }}" class="btn btn-primary btn-sm mt-auto">
                                         Editar
                                     </a>
@@ -101,6 +105,10 @@
                                     >
                                         {{ $product->nombre }}
                                     </button>
+                                    <div>
+                                        <div class="text-muted small fw-semibold text-uppercase">Precio</div>
+                                        <div class="fw-bold">C$ {{ number_format((float) $product->sale_price_1, 2) }}</div>
+                                    </div>
                                     <button
                                         type="button"
                                         class="btn btn-outline-primary btn-sm mt-auto"

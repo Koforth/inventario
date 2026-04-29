@@ -59,7 +59,7 @@ class User extends Authenticatable
     public function primaryRoleName(): ?string
     {
         $roles = $this->relationLoaded('roles') ? $this->roles : $this->roles()->get();
-        $priority = ['admin', 'agregar-productos', 'empleado'];
+        $priority = ['super-admin', 'administrador', 'gerencia', 'contabilidad-caja', 'vendedor-cajero', 'bodega-inventario', 'tecnico', 'invitado'];
 
         foreach ($priority as $roleName) {
             $role = $roles->firstWhere('name', $roleName);
@@ -70,5 +70,10 @@ class User extends Authenticatable
         }
 
         return null;
+    }
+
+    public function sales()
+    {
+        return $this->hasMany(Sale::class);
     }
 }
