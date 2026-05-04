@@ -7,6 +7,10 @@
 @section('content')
     <div class="table-card">
         <div class="border-bottom p-3 p-md-4">
+            <div class="d-flex justify-content-end mb-3">
+                <a href="{{ route('users.create') }}" class="btn btn-primary">Crear usuario</a>
+            </div>
+
             <form method="GET" action="{{ route('users.index') }}" class="row g-3 align-items-end">
                 <div class="col-md-10">
                     <label for="search" class="form-label fw-semibold">Buscar usuario</label>

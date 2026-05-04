@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Supplier;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class PurchaseController extends Controller
@@ -70,71 +73,79 @@ class PurchaseController extends Controller
             'items.*.unit_cost' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $purchase = DB::transaction(function () use ($data) {
-            $purchase = Purchase::create([
-                'number' => $this->nextNumber(),
-                'supplier_id' => $data['supplier_id'],
-                'payment_type' => $data['payment_type'],
-                'notes' => $data['notes'] ?? null,
-                'user_id' => auth()->id(),
+        try {
+            $purchase = Cache::lock('purchases:number', 10)->block(5, function () use ($data) {
+                return DB::transaction(function () use ($data) {
+                    $purchase = Purchase::create([
+                        'number' => $this->nextNumber(),
+                        'supplier_id' => $data['supplier_id'],
+                        'payment_type' => $data['payment_type'],
+                        'notes' => $data['notes'] ?? null,
+                        'user_id' => auth()->id(),
+                    ]);
+
+                    $subtotal = 0;
+                    $tax = 0;
+
+                    foreach ($data['items'] as $item) {
+                        $product = Product::whereKey($item['product_id'])->lockForUpdate()->firstOrFail();
+                        $quantity = (int) $item['quantity'];
+                        $unitCost = (float) $item['unit_cost'];
+                        $lineSubtotal = $quantity * $unitCost;
+                        $lineTax = $product->taxable ? $lineSubtotal * self::TAX_RATE : 0;
+
+                        $purchase->items()->create([
+                            'product_id' => $product->id,
+                            'product_name' => $product->nombre,
+                            'sku' => $product->sku,
+                            'barcode' => $product->barcode,
+                            'quantity' => $quantity,
+                            'unit_cost' => $unitCost,
+                            'previous_cost' => (float) $product->purchase_price,
+                            'line_subtotal' => $lineSubtotal,
+                            'line_tax' => $lineTax,
+                            'line_total' => $lineSubtotal + $lineTax,
+                        ]);
+
+                        if ($product->inventoryable) {
+                            $product->increment('stock', $quantity);
+                        }
+
+                        $product->update(['purchase_price' => $unitCost]);
+                        $subtotal += $lineSubtotal;
+                        $tax += $lineTax;
+                    }
+
+                    $total = $subtotal + $tax;
+                    $paid = $data['payment_type'] === 'contado' ? $total : min((float) ($data['paid_amount'] ?? 0), $total);
+                    $balance = $total - $paid;
+
+                    $purchase->update([
+                        'subtotal' => $subtotal,
+                        'tax' => $tax,
+                        'total' => $total,
+                        'paid_amount' => $paid,
+                        'balance' => $balance,
+                        'status' => $balance > 0 ? 'pendiente' : 'pagada',
+                    ]);
+
+                    if ($paid > 0 && $data['payment_type'] === 'credito') {
+                        $purchase->payments()->create([
+                            'amount' => $paid,
+                            'payment_date' => today(),
+                            'notes' => 'Abono inicial',
+                            'user_id' => auth()->id(),
+                        ]);
+                    }
+
+                    return $purchase;
+                });
+            });
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages([
+                'items' => 'Otra compra se esta registrando. Intenta nuevamente en unos segundos.',
             ]);
-
-            $subtotal = 0;
-            $tax = 0;
-
-            foreach ($data['items'] as $item) {
-                $product = Product::whereKey($item['product_id'])->lockForUpdate()->firstOrFail();
-                $quantity = (int) $item['quantity'];
-                $unitCost = (float) $item['unit_cost'];
-                $lineSubtotal = $quantity * $unitCost;
-                $lineTax = $product->taxable ? $lineSubtotal * self::TAX_RATE : 0;
-
-                $purchase->items()->create([
-                    'product_id' => $product->id,
-                    'product_name' => $product->nombre,
-                    'sku' => $product->sku,
-                    'barcode' => $product->barcode,
-                    'quantity' => $quantity,
-                    'unit_cost' => $unitCost,
-                    'previous_cost' => (float) $product->purchase_price,
-                    'line_subtotal' => $lineSubtotal,
-                    'line_tax' => $lineTax,
-                    'line_total' => $lineSubtotal + $lineTax,
-                ]);
-
-                if ($product->inventoryable) {
-                    $product->increment('stock', $quantity);
-                }
-
-                $product->update(['purchase_price' => $unitCost]);
-                $subtotal += $lineSubtotal;
-                $tax += $lineTax;
-            }
-
-            $total = $subtotal + $tax;
-            $paid = $data['payment_type'] === 'contado' ? $total : min((float) ($data['paid_amount'] ?? 0), $total);
-            $balance = $total - $paid;
-
-            $purchase->update([
-                'subtotal' => $subtotal,
-                'tax' => $tax,
-                'total' => $total,
-                'paid_amount' => $paid,
-                'balance' => $balance,
-                'status' => $balance > 0 ? 'pendiente' : 'pagada',
-            ]);
-
-            if ($paid > 0 && $data['payment_type'] === 'credito') {
-                $purchase->payments()->create([
-                    'amount' => $paid,
-                    'payment_date' => today(),
-                    'notes' => 'Abono inicial',
-                    'user_id' => auth()->id(),
-                ]);
-            }
-
-            return $purchase;
-        });
+        }
 
         return redirect()->route('purchases.show', $purchase)->with('success', 'Compra registrada correctamente.');
     }
@@ -166,6 +177,14 @@ class PurchaseController extends Controller
         ]);
 
         DB::transaction(function () use ($purchase, $data) {
+            $purchase = Purchase::whereKey($purchase->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((float) $purchase->balance <= 0) {
+                throw ValidationException::withMessages(['amount' => 'Esta compra no tiene saldo pendiente.']);
+            }
+
             $amount = min((float) $data['amount'], (float) $purchase->balance);
 
             $purchase->payments()->create([

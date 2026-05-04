@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,11 +22,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Schema::defaultStringLength(191);
+
         Gate::before(fn (User $user) => $user->hasRole('super-admin') ? true : null);
 
-        $permissions = [
-            'catalog.view',
-            'products.create',
+        $modulePermissions = [
             'products.manage',
             'warehouse.manage',
             'inventory.entries.manage',
@@ -37,27 +38,25 @@ class AppServiceProvider extends ServiceProvider
             'layaways.manage',
             'receipts.manage',
             'purchases.manage',
-            'reports.view',
+            'reports.manage',
             'technicians.manage',
             'workshop.manage',
             'users.manage',
+        ];
+
+        $additionalPermissions = [
+            'catalog.view',
+            'products.create',
             'roles.manage',
             'settings.manage',
             'records.delete',
-            // legacy compatibility
-            'view-catalog',
-            'create-products',
-            'manage-products',
-            'manage-inventory',
-            'manage-quotes',
-            'manage-purchases',
-            'manage-cash',
-            'view-reports',
-            'manage-users',
         ];
+
+        $permissions = array_merge($modulePermissions, $additionalPermissions);
 
         foreach ($permissions as $permission) {
             Gate::define($permission, fn (User $user) => $user->hasPermission($permission));
         }
+
     }
 }

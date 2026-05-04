@@ -20,38 +20,33 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $permissions = [
+        $modulePermissions = [
+            'products.manage' => 'Gestionar modulo de productos',
+            'warehouse.manage' => 'Gestionar modulo de almacen',
+            'inventory.entries.manage' => 'Gestionar modulo de entradas de inventario',
+            'kardex.manage' => 'Gestionar modulo de kardex',
+            'customers.manage' => 'Gestionar modulo de clientes',
+            'sales.manage' => 'Gestionar modulo de ventas',
+            'cash.manage' => 'Gestionar modulo de caja',
+            'quotes.manage' => 'Gestionar modulo de cotizaciones',
+            'layaways.manage' => 'Gestionar modulo de apartados',
+            'receipts.manage' => 'Gestionar modulo de comprobantes',
+            'purchases.manage' => 'Gestionar modulo de compras',
+            'reports.manage' => 'Gestionar modulo de reportes',
+            'technicians.manage' => 'Gestionar modulo de tecnicos',
+            'workshop.manage' => 'Gestionar modulo de taller',
+            'users.manage' => 'Gestionar modulo de usuarios',
+        ];
+
+        $additionalPermissions = [
             'catalog.view' => 'Ver catalogo',
             'products.create' => 'Crear productos',
-            'products.manage' => 'Gestionar productos',
-            'warehouse.manage' => 'Gestionar almacen',
-            'inventory.entries.manage' => 'Gestionar entradas de inventario',
-            'kardex.manage' => 'Gestionar kardex',
-            'customers.manage' => 'Gestionar clientes',
-            'sales.manage' => 'Gestionar ventas',
-            'cash.manage' => 'Gestionar caja',
-            'quotes.manage' => 'Gestionar cotizaciones',
-            'layaways.manage' => 'Gestionar apartados',
-            'receipts.manage' => 'Gestionar comprobantes',
-            'purchases.manage' => 'Gestionar compras',
-            'reports.view' => 'Ver reportes',
-            'technicians.manage' => 'Gestionar tecnicos',
-            'workshop.manage' => 'Gestionar taller',
-            'users.manage' => 'Gestionar usuarios',
-            'roles.manage' => 'Gestionar roles y permisos',
+            'roles.manage' => 'Gestionar roles sensibles',
             'settings.manage' => 'Gestionar configuraciones sensibles',
             'records.delete' => 'Eliminar registros',
-            // legacy compatibility
-            'view-catalog' => 'Legacy: Ver catalogo',
-            'create-products' => 'Legacy: Crear productos',
-            'manage-products' => 'Legacy: Gestionar productos',
-            'manage-inventory' => 'Legacy: Gestionar inventario',
-            'manage-quotes' => 'Legacy: Gestionar cotizaciones',
-            'manage-purchases' => 'Legacy: Gestionar compras',
-            'manage-cash' => 'Legacy: Gestionar caja',
-            'view-reports' => 'Legacy: Ver reportes',
-            'manage-users' => 'Legacy: Gestionar usuarios',
         ];
+
+        $permissions = array_merge($modulePermissions, $additionalPermissions);
 
         foreach ($permissions as $name => $label) {
             Permission::updateOrCreate(['name' => $name], ['label' => $label]);
@@ -65,26 +60,22 @@ class DatabaseSeeder extends Seeder
             'administrador' => [
                 'label' => 'Administrador',
                 'permissions' => [
-                    'catalog.view', 'products.create', 'products.manage', 'warehouse.manage', 'reports.view',
+                    'catalog.view', 'products.create', 'products.manage', 'warehouse.manage',
                     'customers.manage', 'sales.manage', 'cash.manage', 'purchases.manage', 'quotes.manage',
                     'technicians.manage', 'workshop.manage', 'layaways.manage', 'kardex.manage', 'receipts.manage',
                     'inventory.entries.manage',
-                    'view-catalog', 'create-products', 'manage-products', 'manage-inventory', 'manage-quotes',
-                    'manage-purchases', 'manage-cash', 'view-reports',
                 ],
             ],
             'vendedor-cajero' => [
                 'label' => 'Vendedor / Cajero',
                 'permissions' => [
                     'customers.manage', 'sales.manage', 'cash.manage', 'quotes.manage', 'layaways.manage', 'receipts.manage',
-                    'manage-inventory', 'manage-quotes', 'manage-cash',
                 ],
             ],
             'bodega-inventario' => [
                 'label' => 'Bodega / Inventario',
                 'permissions' => [
                     'catalog.view', 'products.create', 'products.manage', 'warehouse.manage', 'inventory.entries.manage', 'kardex.manage', 'purchases.manage',
-                    'view-catalog', 'create-products', 'manage-products', 'manage-purchases',
                 ],
             ],
             'tecnico' => [
@@ -96,20 +87,18 @@ class DatabaseSeeder extends Seeder
             'contabilidad-caja' => [
                 'label' => 'Contabilidad / Caja',
                 'permissions' => [
-                    'cash.manage', 'reports.view', 'sales.manage', 'purchases.manage', 'receipts.manage',
-                    'manage-cash', 'view-reports', 'manage-purchases',
+                    'cash.manage', 'sales.manage', 'purchases.manage', 'receipts.manage',
                 ],
             ],
             'gerencia' => [
                 'label' => 'Gerencia',
                 'permissions' => [
-                    'reports.view', 'sales.manage', 'purchases.manage', 'cash.manage', 'kardex.manage', 'customers.manage',
-                    'view-reports',
+                    'sales.manage', 'purchases.manage', 'cash.manage', 'kardex.manage', 'customers.manage',
                 ],
             ],
             'invitado' => [
                 'label' => 'Invitado',
-                'permissions' => ['catalog.view', 'view-catalog'],
+                'permissions' => ['catalog.view'],
             ],
         ];
 
@@ -118,16 +107,20 @@ class DatabaseSeeder extends Seeder
             $role->permissions()->sync(Permission::whereIn('name', $roleData['permissions'])->pluck('id'));
         }
 
-        $admin = User::updateOrCreate(
-            ['email' => 'admin@example.com'],
-            [
-                'name' => 'Administrador',
-                'password' => 'password',
-                'role' => 'super-admin',
-            ]
-        );
+        $adminPassword = env('ADMIN_PASSWORD');
 
-        $admin->roles()->syncWithoutDetaching([Role::where('name', 'super-admin')->value('id')]);
+        if ($adminPassword) {
+            $admin = User::updateOrCreate(
+                ['email' => env('ADMIN_EMAIL', 'admin@example.com')],
+                [
+                    'name' => env('ADMIN_NAME', 'Administrador'),
+                    'password' => $adminPassword,
+                    'role' => 'super-admin',
+                ]
+            );
+
+            $admin->roles()->syncWithoutDetaching([Role::where('name', 'super-admin')->value('id')]);
+        }
 
         foreach (['Cocina', 'Limpieza', 'Bano', 'Dormitorio', 'Sala'] as $category) {
             Category::updateOrCreate(

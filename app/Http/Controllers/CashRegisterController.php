@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashRegister;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class CashRegisterController extends Controller
@@ -40,18 +43,26 @@ class CashRegisterController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        if (CashRegister::where('status', 'open')->exists()) {
-            return back()->withErrors(['opening_amount' => 'Ya existe una caja abierta.']);
+        try {
+            return Cache::lock('cash-register:open', 10)->block(5, function () use ($data) {
+                if (CashRegister::where('status', 'open')->exists()) {
+                    return back()->withErrors(['opening_amount' => 'Ya existe una caja abierta.']);
+                }
+
+                CashRegister::create([
+                    'opened_at' => now(),
+                    'opening_amount' => $data['opening_amount'],
+                    'notes' => $data['notes'] ?? null,
+                    'opened_by' => auth()->id(),
+                ]);
+
+                return back()->with('success', 'Caja abierta correctamente.');
+            });
+        } catch (LockTimeoutException) {
+            return back()->withErrors([
+                'opening_amount' => 'Otra solicitud esta abriendo caja. Intenta nuevamente en unos segundos.',
+            ]);
         }
-
-        CashRegister::create([
-            'opened_at' => now(),
-            'opening_amount' => $data['opening_amount'],
-            'notes' => $data['notes'] ?? null,
-            'opened_by' => auth()->id(),
-        ]);
-
-        return back()->with('success', 'Caja abierta correctamente.');
     }
 
     public function close(Request $request, CashRegister $cashRegister): RedirectResponse
@@ -61,13 +72,29 @@ class CashRegisterController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $cashRegister->update([
-            'closed_at' => now(),
-            'closing_amount' => $data['closing_amount'],
-            'notes' => trim(($cashRegister->notes ? $cashRegister->notes . PHP_EOL : '') . ($data['notes'] ?? '')) ?: null,
-            'status' => 'closed',
-            'closed_by' => auth()->id(),
-        ]);
+        $closed = DB::transaction(function () use ($cashRegister, $data): bool {
+            $cashRegister = CashRegister::whereKey($cashRegister->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($cashRegister->status !== 'open') {
+                return false;
+            }
+
+            $cashRegister->update([
+                'closed_at' => now(),
+                'closing_amount' => $data['closing_amount'],
+                'notes' => trim(($cashRegister->notes ? $cashRegister->notes . PHP_EOL : '') . ($data['notes'] ?? '')) ?: null,
+                'status' => 'closed',
+                'closed_by' => auth()->id(),
+            ]);
+
+            return true;
+        });
+
+        if (! $closed) {
+            return back()->withErrors(['closing_amount' => 'La caja ya fue cerrada.']);
+        }
 
         return back()->with('success', 'Caja cerrada correctamente.');
     }
@@ -80,12 +107,28 @@ class CashRegisterController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $cashRegister->movements()->create([
-            'type' => $data['type'],
-            'amount' => $data['amount'],
-            'description' => $data['description'] ?? null,
-            'user_id' => auth()->id(),
-        ]);
+        $created = DB::transaction(function () use ($cashRegister, $data): bool {
+            $cashRegister = CashRegister::whereKey($cashRegister->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($cashRegister->status !== 'open') {
+                return false;
+            }
+
+            $cashRegister->movements()->create([
+                'type' => $data['type'],
+                'amount' => $data['amount'],
+                'description' => $data['description'] ?? null,
+                'user_id' => auth()->id(),
+            ]);
+
+            return true;
+        });
+
+        if (! $created) {
+            return back()->withErrors(['amount' => 'No se pueden registrar movimientos en una caja cerrada.']);
+        }
 
         return back()->with('success', 'Movimiento de caja registrado.');
     }

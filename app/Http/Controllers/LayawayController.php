@@ -182,11 +182,15 @@ class LayawayController extends Controller
             'notes' => ['nullable', 'string', 'max:255'],
         ]);
 
-        if ($layaway->status !== 'pending') {
-            return back()->withErrors(['amount' => 'Este apartado ya fue finalizado.']);
-        }
-
         DB::transaction(function () use ($layaway, $data) {
+            $layaway = Layaway::whereKey($layaway->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($layaway->status !== 'pending') {
+                throw ValidationException::withMessages(['amount' => 'Este apartado ya fue finalizado.']);
+            }
+
             $register = CashRegister::where('status', 'open')->lockForUpdate()->latest('opened_at')->first();
             if (! $register) {
                 throw ValidationException::withMessages(['amount' => 'Debes abrir caja para registrar abonos.']);
@@ -210,11 +214,17 @@ class LayawayController extends Controller
 
     public function complete(Request $request, Layaway $layaway): RedirectResponse
     {
-        if ($layaway->status !== 'pending') {
-            return back()->withErrors(['complete' => 'El apartado ya fue finalizado.']);
-        }
-
         DB::transaction(function () use ($layaway) {
+            $layaway = Layaway::query()
+                ->with('items')
+                ->whereKey($layaway->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($layaway->status !== 'pending') {
+                throw ValidationException::withMessages(['complete' => 'El apartado ya fue finalizado.']);
+            }
+
             $register = CashRegister::where('status', 'open')->lockForUpdate()->latest('opened_at')->first();
             if (! $register) {
                 throw ValidationException::withMessages(['complete' => 'Debes abrir caja para finalizar apartados.']);
@@ -273,11 +283,15 @@ class LayawayController extends Controller
             'notes' => ['nullable', 'string', 'max:255'],
         ]);
 
-        if ($sale->sale_type !== 'credito' || (float) $sale->credit_balance <= 0) {
-            return back()->withErrors(['amount' => 'Esta venta no tiene saldo pendiente.']);
-        }
-
         DB::transaction(function () use ($sale, $data) {
+            $sale = Sale::whereKey($sale->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($sale->sale_type !== 'credito' || (float) $sale->credit_balance <= 0) {
+                throw ValidationException::withMessages(['amount' => 'Esta venta no tiene saldo pendiente.']);
+            }
+
             $register = CashRegister::where('status', 'open')->lockForUpdate()->latest('opened_at')->first();
             if (! $register) {
                 throw ValidationException::withMessages(['amount' => 'Debes abrir caja para registrar abonos.']);

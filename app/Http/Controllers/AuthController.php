@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Role;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class AuthController extends Controller
@@ -17,11 +17,6 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
-    public function showRegister(): View
-    {
-        return view('auth.register');
-    }
-
     public function login(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
@@ -29,41 +24,28 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+        $throttleKey = $this->throttleKey($request);
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            throw ValidationException::withMessages([
+                'email' => "Demasiados intentos fallidos. Intenta nuevamente en {$seconds} segundos.",
+            ]);
+        }
+
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
 
             return redirect()->intended(route('home'));
         }
 
+        RateLimiter::hit($throttleKey, 60);
+
         return back()
             ->withErrors(['email' => 'Las credenciales no coinciden con nuestros registros.'])
             ->onlyInput('email');
-    }
-
-    public function register(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::min(8)],
-        ]);
-
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => $data['password'],
-        ]);
-
-        if ($role = Role::where('name', 'invitado')->first()) {
-            $user->roles()->attach($role);
-        }
-
-        Auth::login($user);
-        $request->session()->regenerate();
-
-        return redirect()
-            ->route('home')
-            ->with('success', 'Usuario creado correctamente. Tu rol inicial es invitado.');
     }
 
     public function logout(Request $request): RedirectResponse
@@ -74,5 +56,10 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
+    }
+
+    private function throttleKey(Request $request): string
+    {
+        return Str::lower((string) $request->input('email')) . '|' . $request->ip();
     }
 }

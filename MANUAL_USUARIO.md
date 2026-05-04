@@ -213,15 +213,19 @@ Incluye:
 - valor de inventario,
 - filtros por fecha y tipo.
 
+Acceso:
+
+- Este modulo esta restringido para perfiles autorizados por administracion (actualmente super-admin).
+
 ## 15) Roles de uso (resumen)
 
 - **Super Admin**: acceso total.
-- **Administrador**: gestion integral del negocio.
+- **Administrador**: gestion integral del negocio (sin acceso a reportes sensibles).
 - **Vendedor/Cajero**: ventas, caja, clientes, cotizaciones, apartados, comprobantes.
 - **Bodega/Inventario**: catalogo, productos, almacen, entradas, kardex, compras.
 - **Tecnico**: tecnicos, taller, clientes, comprobantes.
-- **Contabilidad/Caja**: caja, reportes, ventas, compras, comprobantes.
-- **Gerencia**: supervision (reportes, ventas, compras, caja, kardex, clientes).
+- **Contabilidad/Caja**: caja, ventas, compras, comprobantes.
+- **Gerencia**: supervision (ventas, compras, caja, kardex, clientes).
 - **Invitado**: acceso restringido de consulta.
 
 ## 16) Buenas practicas operativas
@@ -241,3 +245,11 @@ Incluye:
 - **No coincide numeracion de comprobante**: revisar configuracion en Comprobantes.
 - **No hay stock suficiente**: registrar entrada o ajustar cantidad.
 
+## 18) Modulo de usuarios (cards colapsables)
+
+En crear/editar usuario, los roles se muestran en bloques colapsables para facilitar asignacion:
+
+- Roles por modulo
+- Roles especiales
+- Roles con mas de un permiso
+- Roles con un solo permiso

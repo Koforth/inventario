@@ -76,22 +76,60 @@
         @error('purchase_price') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
     </div>
 
-    <div class="col-md-4">
-        <label for="sale_price_1" class="form-label fw-semibold">Precio venta 1 *</label>
-        <input id="sale_price_1" type="number" min="0" step="0.01" name="sale_price_1" value="{{ old('sale_price_1', $product->sale_price_1 ?? $product->precio ?? 0) }}" required class="form-control">
-        @error('sale_price_1') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-    </div>
+    <div class="col-md-12">
+        @php
+            $oldPrices = old('prices');
+            $priceRows = $oldPrices
+                ? collect($oldPrices)
+                : ($product->relationLoaded('prices') && $product->prices->where('is_active', true)->isNotEmpty()
+                    ? $product->prices->where('is_active', true)->values()->map(fn ($price) => [
+                        'id' => $price->id,
+                        'label' => $price->label,
+                        'amount' => $price->amount,
+                    ])
+                    : collect([
+                        ['id' => null, 'label' => 'Precio 1', 'amount' => $product->sale_price_1 ?? $product->precio ?? 0],
+                        ['id' => null, 'label' => 'Precio 2', 'amount' => $product->sale_price_2],
+                        ['id' => null, 'label' => 'Precio 3', 'amount' => $product->sale_price_3],
+                    ])->filter(fn ($price, $index) => $index === 0 || filled($price['amount'])));
+        @endphp
 
-    <div class="col-md-4">
-        <label for="sale_price_2" class="form-label fw-semibold">Precio venta 2</label>
-        <input id="sale_price_2" type="number" min="0" step="0.01" name="sale_price_2" value="{{ old('sale_price_2', $product->sale_price_2) }}" class="form-control">
-        @error('sale_price_2') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-    </div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label fw-semibold mb-0">Precios de venta *</label>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="addPriceRow">Agregar precio</button>
+        </div>
 
-    <div class="col-md-4">
-        <label for="sale_price_3" class="form-label fw-semibold">Precio venta 3</label>
-        <input id="sale_price_3" type="number" min="0" step="0.01" name="sale_price_3" value="{{ old('sale_price_3', $product->sale_price_3) }}" class="form-control">
-        @error('sale_price_3') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-1" id="pricesTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre</th>
+                        <th style="width: 180px;">Monto</th>
+                        <th style="width: 70px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($priceRows as $index => $price)
+                        <tr>
+                            <td>
+                                <input type="hidden" name="prices[{{ $index }}][id]" value="{{ $price['id'] ?? '' }}">
+                                <input name="prices[{{ $index }}][label]" value="{{ $price['label'] ?? '' }}" maxlength="80" required class="form-control form-control-sm" placeholder="Ejemplo: Mayorista">
+                            </td>
+                            <td>
+                                <input type="number" min="0" step="0.01" name="prices[{{ $index }}][amount]" value="{{ $price['amount'] ?? 0 }}" required class="form-control form-control-sm text-end">
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-danger btn-sm js-remove-price">Quitar</button>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        <div class="form-text">El primer precio se usara como precio principal en catalogo y reportes.</div>
+        @error('prices') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+        @error('prices.*.label') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+        @error('prices.*.amount') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
     </div>
 
     <div class="col-md-8">
@@ -168,3 +206,57 @@
     <a href="{{ route('products.index') }}" class="btn btn-outline-secondary">Cancelar</a>
     <button class="btn btn-primary">Guardar producto</button>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const table = document.querySelector('#pricesTable tbody');
+        const addButton = document.getElementById('addPriceRow');
+
+        const refreshNames = () => {
+            table.querySelectorAll('tr').forEach((row, index) => {
+                row.querySelectorAll('input').forEach((input) => {
+                    input.name = input.name.replace(/prices\[\d+]/, `prices[${index}]`);
+                });
+            });
+        };
+
+        const ensureOneRow = () => {
+            const removeButtons = table.querySelectorAll('.js-remove-price');
+            removeButtons.forEach((button) => {
+                button.disabled = removeButtons.length === 1;
+            });
+        };
+
+        addButton.addEventListener('click', () => {
+            const index = table.querySelectorAll('tr').length;
+            table.insertAdjacentHTML('beforeend', `
+                <tr>
+                    <td>
+                        <input type="hidden" name="prices[${index}][id]" value="">
+                        <input name="prices[${index}][label]" maxlength="80" required class="form-control form-control-sm" placeholder="Ejemplo: Mayorista">
+                    </td>
+                    <td>
+                        <input type="number" min="0" step="0.01" name="prices[${index}][amount]" value="0" required class="form-control form-control-sm text-end">
+                    </td>
+                    <td class="text-end">
+                        <button type="button" class="btn btn-outline-danger btn-sm js-remove-price">Quitar</button>
+                    </td>
+                </tr>
+            `);
+            ensureOneRow();
+        });
+
+        table.addEventListener('click', (event) => {
+            const button = event.target.closest('.js-remove-price');
+            if (!button || table.querySelectorAll('tr').length === 1) {
+                return;
+            }
+
+            button.closest('tr').remove();
+            refreshNames();
+            ensureOneRow();
+        });
+
+        ensureOneRow();
+    });
+</script>

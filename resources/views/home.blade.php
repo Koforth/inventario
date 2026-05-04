@@ -52,7 +52,9 @@
                     <a href="{{ route('inventory.layaways.index') }}" class="btn btn-outline-primary text-start">Apartados y creditos</a>
                     <a href="{{ route('inventory.workshop.index') }}" class="btn btn-outline-primary text-start">Ordenes de taller</a>
                     <a href="{{ route('cash.index') }}" class="btn btn-outline-primary text-start">Caja diaria</a>
-                    <a href="{{ route('reports.index') }}" class="btn btn-outline-primary text-start">Reportes</a>
+                    @can('reports.manage')
+                        <a href="{{ route('reports.index') }}" class="btn btn-outline-primary text-start">Reportes</a>
+                    @endcan
                 </div>
             </div>
         </div>
@@ -114,4 +116,3 @@
         </div>
     </div>
 @endsection
-

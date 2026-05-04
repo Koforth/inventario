@@ -69,11 +69,11 @@ return new class extends Migration
         }
 
         $permissions = [
-            'view-catalog' => 'Ver catalogo',
-            'manage-products' => 'Administrar productos',
-            'manage-inventory' => 'Administrar inventario',
-            'view-reports' => 'Ver reportes',
-            'manage-users' => 'Administrar usuarios',
+            'catalog.view' => 'Ver catalogo',
+            'products.manage' => 'Administrar productos',
+            'inventory.entries.manage' => 'Administrar inventario',
+            'reports.view' => 'Ver reportes',
+            'users.manage' => 'Administrar usuarios',
         ];
 
         foreach ($permissions as $name => $label) {
@@ -86,9 +86,9 @@ return new class extends Migration
         }
 
         $rolePermissions = [
-            'admin' => ['view-catalog', 'manage-products', 'manage-inventory', 'view-reports', 'manage-users'],
-            'empleado' => ['view-catalog', 'manage-inventory'],
-            'invitado' => ['view-catalog'],
+            'admin' => ['catalog.view', 'products.manage', 'inventory.entries.manage', 'reports.view', 'users.manage'],
+            'empleado' => ['catalog.view', 'inventory.entries.manage'],
+            'invitado' => ['catalog.view'],
         ];
 
         foreach ($rolePermissions as $roleName => $permissionNames) {

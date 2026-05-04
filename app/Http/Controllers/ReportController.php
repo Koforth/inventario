@@ -15,13 +15,24 @@ class ReportController extends Controller
     public function index(Request $request): View
     {
         $filters = $request->validate([
-            'tipo' => ['nullable', 'in:todos,entrada,venta,merma,traslado'],
+            'tipo' => ['nullable', 'string', 'max:50'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date'],
             'search' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $tipo = $filters['tipo'] ?? 'todos';
+        $movementTypes = Movement::query()
+            ->distinct()
+            ->orderBy('tipo')
+            ->pluck('tipo')
+            ->filter()
+            ->values();
+
+        $tipo = (string) ($filters['tipo'] ?? 'todos');
+        $tipo = $tipo === '' ? 'todos' : $tipo;
+        if ($tipo !== 'todos' && ! $movementTypes->contains($tipo)) {
+            $tipo = 'todos';
+        }
         $dateFrom = $filters['date_from'] ?? null;
         $dateTo = $filters['date_to'] ?? null;
         $search = trim((string) ($filters['search'] ?? ''));
@@ -87,19 +98,30 @@ class ReportController extends Controller
             'dateFrom',
             'dateTo',
             'search',
+            'movementTypes',
         ));
     }
 
     public function export(Request $request): StreamedResponse
     {
         $filters = $request->validate([
-            'tipo' => ['nullable', 'in:todos,entrada,venta,merma,traslado'],
+            'tipo' => ['nullable', 'string', 'max:50'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date'],
             'search' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $tipo = $filters['tipo'] ?? 'todos';
+        $movementTypes = Movement::query()
+            ->distinct()
+            ->pluck('tipo')
+            ->filter()
+            ->values();
+
+        $tipo = (string) ($filters['tipo'] ?? 'todos');
+        $tipo = $tipo === '' ? 'todos' : $tipo;
+        if ($tipo !== 'todos' && ! $movementTypes->contains($tipo)) {
+            $tipo = 'todos';
+        }
         $dateFrom = $filters['date_from'] ?? null;
         $dateTo = $filters['date_to'] ?? null;
         $search = trim((string) ($filters['search'] ?? ''));

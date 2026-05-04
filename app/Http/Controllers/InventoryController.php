@@ -134,8 +134,9 @@ class InventoryController extends Controller
             'card_amount' => ['nullable', 'numeric', 'min:0'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.price_id' => ['nullable', 'exists:product_prices,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
-            'items.*.price_type' => ['required', 'integer', 'in:1,2,3'],
+            'items.*.price_type' => ['nullable', 'integer', 'min:1'],
             'items.*.discount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
@@ -148,6 +149,7 @@ class InventoryController extends Controller
             }
 
             $products = Product::whereIn('id', collect($data['items'])->pluck('product_id')->all())
+                ->with('prices')
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
@@ -159,9 +161,10 @@ class InventoryController extends Controller
             foreach ($data['items'] as $item) {
                 $product = $products->get((int) $item['product_id']);
                 $quantity = (int) $item['quantity'];
-                $priceType = (int) $item['price_type'];
+                $priceId = isset($item['price_id']) ? (int) $item['price_id'] : null;
+                $priceType = (int) ($item['price_type'] ?? 1);
                 $discount = min((float) ($item['discount'] ?? 0), 99999999.99);
-                $unitPrice = $this->resolvePriceByType($product, $priceType);
+                [$unitPrice, $priceType, $priceId] = $this->resolveSalePrice($product, $priceId, $priceType);
 
                 if ($product->inventoryable && $product->stock < $quantity) {
                     throw ValidationException::withMessages([
@@ -179,6 +182,7 @@ class InventoryController extends Controller
                 $lineItems[] = [
                     'product' => $product,
                     'quantity' => $quantity,
+                    'price_id' => $priceId,
                     'price_type' => $priceType,
                     'unit_price' => $unitPrice,
                     'discount' => $lineDiscount,
@@ -190,6 +194,9 @@ class InventoryController extends Controller
             $total = max($subtotal - $discountTotal, 0);
             $cashAmount = (float) ($data['cash_amount'] ?? 0);
             $cardAmount = (float) ($data['card_amount'] ?? 0);
+
+            $this->validatePaymentAmounts($data['payment_method'], $data['sale_type'], $total, $cashAmount, $cardAmount);
+
             [$cashAmount, $cardAmount] = $this->normalizePayment($data['payment_method'], $cashAmount, $cardAmount);
             $paidAmount = $cashAmount + $cardAmount;
             $changeAmount = 0.0;
@@ -276,6 +283,7 @@ class InventoryController extends Controller
 
                 $sale->items()->create([
                     'product_id' => $product->id,
+                    'product_price_id' => $lineItem['price_id'],
                     'price_type' => $lineItem['price_type'],
                     'quantity' => $lineItem['quantity'],
                     'unit_price' => round($lineItem['unit_price'], 2),
@@ -319,6 +327,63 @@ class InventoryController extends Controller
         return [$cashAmount, $cardAmount];
     }
 
+    private function validatePaymentAmounts(string $method, string $saleType, float $total, float $cashAmount, float $cardAmount): void
+    {
+        if ($method === 'efectivo' && $cardAmount > 0) {
+            throw ValidationException::withMessages([
+                'card_amount' => 'El monto tarjeta debe estar en cero cuando el pago es en efectivo.',
+            ]);
+        }
+
+        if ($method === 'tarjeta' && $cashAmount > 0) {
+            throw ValidationException::withMessages([
+                'cash_amount' => 'El monto efectivo debe estar en cero cuando el pago es con tarjeta.',
+            ]);
+        }
+
+        $paidAmount = $cashAmount + $cardAmount;
+
+        if ($saleType === 'contado' && $paidAmount < $total) {
+            throw ValidationException::withMessages([
+                'payment' => 'El monto pagado no cubre el total de la venta.',
+            ]);
+        }
+
+        if ($saleType === 'credito' && $paidAmount > $total) {
+            throw ValidationException::withMessages([
+                'payment' => 'El abono inicial no puede superar el total de la venta.',
+            ]);
+        }
+
+        if ($method === 'tarjeta' && $paidAmount > $total) {
+            throw ValidationException::withMessages([
+                'card_amount' => 'El monto tarjeta no puede superar el total de la venta.',
+            ]);
+        }
+    }
+
+    private function resolveSalePrice(Product $product, ?int $priceId, int $priceType): array
+    {
+        if ($priceId) {
+            $price = $product->prices
+                ->where('is_active', true)
+                ->firstWhere('id', $priceId);
+
+            if (! $price) {
+                throw ValidationException::withMessages([
+                    'items' => "El precio seleccionado no pertenece al producto {$product->nombre}.",
+                ]);
+            }
+
+            $activePrices = $product->prices->where('is_active', true)->values();
+            $resolvedType = $activePrices->search(fn ($item) => $item->id === $price->id);
+
+            return [(float) $price->amount, $resolvedType === false ? $priceType : $resolvedType + 1, $price->id];
+        }
+
+        return [$this->resolvePriceByType($product, $priceType), $priceType, null];
+    }
+
     private function resolvePriceByType(Product $product, int $priceType): float
     {
         $price = match ($priceType) {
@@ -347,7 +412,7 @@ class InventoryController extends Controller
         $search = trim((string) $request->query('search', ''));
 
         return Product::query()
-            ->with(['brand', 'category', 'presentation', 'suppliers'])
+            ->with(['brand', 'category', 'presentation', 'suppliers', 'prices'])
             ->when($onlyAvailable, fn ($query) => $query->where('stock', '>', 0))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {

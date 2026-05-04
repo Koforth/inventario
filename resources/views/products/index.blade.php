@@ -6,11 +6,11 @@
 
 @section('content')
     @php
-        $userCanManageProducts = auth()->user()->can('manage-products');
+        $userCanManageProducts = auth()->user()->can('products.manage');
         $userCanUseCarousel = ! $userCanManageProducts || auth()->user()->hasRole('empleado');
     @endphp
 
-    @can('view-reports')
+    @can('reports.manage')
         <div class="row g-3 mb-4">
             <div class="col-md-4">
                 <div class="metric-card p-4">
@@ -90,7 +90,7 @@
                                     </a>
                                     <div>
                                         <div class="text-muted small fw-semibold text-uppercase">Precio</div>
-                                        <div class="fw-bold">C$ {{ number_format((float) $product->sale_price_1, 2) }}</div>
+                                        <div class="fw-bold">C$ {{ number_format($product->primaryPrice(), 2) }}</div>
                                     </div>
                                     <a href="{{ route('products.edit', $product) }}" class="btn btn-primary btn-sm mt-auto">
                                         Editar
@@ -107,7 +107,7 @@
                                     </button>
                                     <div>
                                         <div class="text-muted small fw-semibold text-uppercase">Precio</div>
-                                        <div class="fw-bold">C$ {{ number_format((float) $product->sale_price_1, 2) }}</div>
+                                        <div class="fw-bold">C$ {{ number_format($product->primaryPrice(), 2) }}</div>
                                     </div>
                                     <button
                                         type="button"
@@ -385,7 +385,7 @@
                                                         </div>
                                                         <div class="col-6">
                                                             <div class="text-muted small fw-semibold text-uppercase">Precio</div>
-                                                            <div class="fw-bold">C$ {{ number_format((float) $product->sale_price_1, 2) }}</div>
+                                                            <div class="fw-bold">C$ {{ number_format($product->primaryPrice(), 2) }}</div>
                                                         </div>
                                                         <div class="col-6">
                                                             <div class="text-muted small fw-semibold text-uppercase">Stock</div>
@@ -439,7 +439,7 @@
                                                     </div>
 
                                                     <div class="d-grid d-sm-flex gap-2 mt-auto">
-                                                        @can('manage-products')
+                                                        @can('products.manage')
                                                             <a href="{{ route('products.edit', $product) }}" class="btn btn-primary">Editar</a>
                                                         @endcan
                                                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>

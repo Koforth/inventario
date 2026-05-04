@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Supplier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -21,7 +22,7 @@ class ProductController extends Controller
         $status = $request->query('status', 'all');
 
         $products = Product::query()
-            ->with(['category', 'brand', 'presentation', 'images', 'suppliers'])
+            ->with(['category', 'brand', 'presentation', 'images', 'suppliers', 'prices'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query
@@ -52,14 +53,14 @@ class ProductController extends Controller
     public function create(): View
     {
         return view('products.create', [
-            'product' => new Product([
+            'product' => (new Product([
                 'stock' => 0,
                 'stock_minimo' => 0,
                 'precio' => 0,
                 'purchase_price' => 0,
                 'sale_price_1' => 0,
                 'inventoryable' => true,
-            ]),
+            ]))->setRelation('prices', collect()),
             'categories' => Category::orderBy('nombre')->get(),
             'brands' => Brand::orderBy('nombre')->get(),
             'presentations' => Presentation::orderBy('nombre')->get(),
@@ -72,10 +73,18 @@ class ProductController extends Controller
 
         $images = array_filter((array) $request->file('images', []));
         $supplierNames = $this->parseSupplierNames($data['proveedor'] ?? '');
+        $prices = $data['prices'];
         unset($data['images']);
+        unset($data['prices']);
         $this->normalizeProductData($data);
 
-        $product = Product::create($data);
+        $product = DB::transaction(function () use ($data, $prices) {
+            $product = Product::create($data);
+            $this->syncPrices($product, $prices);
+
+            return $product;
+        });
+
         $this->syncSuppliers($product, $supplierNames);
         $this->storeImages($product, $images);
 
@@ -87,14 +96,14 @@ class ProductController extends Controller
     public function show(Product $product): View
     {
         return view('products.show', [
-            'product' => $product->load(['brand', 'category', 'presentation', 'images', 'suppliers']),
+            'product' => $product->load(['brand', 'category', 'presentation', 'images', 'suppliers', 'prices']),
         ]);
     }
 
     public function edit(Product $product): View
     {
         return view('products.edit', [
-            'product' => $product->load(['images', 'suppliers', 'presentation']),
+            'product' => $product->load(['images', 'suppliers', 'presentation', 'prices']),
             'categories' => Category::orderBy('nombre')->get(),
             'brands' => Brand::orderBy('nombre')->get(),
             'presentations' => Presentation::orderBy('nombre')->get(),
@@ -107,10 +116,16 @@ class ProductController extends Controller
 
         $images = array_filter((array) $request->file('images', []));
         $supplierNames = $this->parseSupplierNames($data['proveedor'] ?? '');
+        $prices = $data['prices'];
         unset($data['images']);
+        unset($data['prices']);
         $this->normalizeProductData($data);
 
-        $product->update($data);
+        DB::transaction(function () use ($product, $data, $prices) {
+            $product->update($data);
+            $this->syncPrices($product, $prices);
+        });
+
         $this->syncSuppliers($product, $supplierNames);
         $this->storeImages($product, $images);
 
@@ -121,6 +136,31 @@ class ProductController extends Controller
 
     public function destroy(Product $product): RedirectResponse
     {
+        $usageLabels = [
+            'movements' => 'movimientos de inventario',
+            'saleItems' => 'ventas',
+            'purchaseItems' => 'compras',
+            'quoteItems' => 'cotizaciones',
+            'layawayItems' => 'apartados',
+        ];
+
+        $usageCounts = $product
+            ->loadCount(array_keys($usageLabels))
+            ->only(array_map(fn ($relation) => "{$relation}_count", array_keys($usageLabels)));
+
+        $activeUsage = collect($usageLabels)
+            ->filter(fn ($label, $relation) => (int) ($usageCounts["{$relation}_count"] ?? 0) > 0)
+            ->values()
+            ->all();
+
+        if ($activeUsage !== []) {
+            return redirect()
+                ->route('products.index')
+                ->withErrors([
+                    'product' => 'No se puede eliminar el producto porque tiene historial en ' . implode(', ', $activeUsage) . '.',
+                ]);
+        }
+
         $paths = $product->images()->pluck('path')->all();
 
         if ($product->image_path && ! in_array($product->image_path, $paths, true)) {
@@ -146,9 +186,10 @@ class ProductController extends Controller
             'nombre' => ['required', 'string', 'max:255'],
             'descripcion' => ['nullable', 'string', 'max:1000'],
             'purchase_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
-            'sale_price_1' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
-            'sale_price_2' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
-            'sale_price_3' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'prices' => ['required', 'array', 'min:1'],
+            'prices.*.id' => ['nullable', 'integer', 'exists:product_prices,id'],
+            'prices.*.label' => ['required', 'string', 'max:80'],
+            'prices.*.amount' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'stock' => ['required', 'integer', 'min:0'],
             'stock_minimo' => ['required', 'integer', 'min:0'],
             'proveedor' => ['nullable', 'string', 'max:160'],
@@ -208,12 +249,48 @@ class ProductController extends Controller
         $product->suppliers()->sync($supplierIds);
     }
 
+    private function syncPrices(Product $product, array $prices): void
+    {
+        $submittedIds = [];
+        $legacyPrices = [];
+
+        foreach (array_values($prices) as $index => $price) {
+            $payload = [
+                'label' => trim($price['label']),
+                'amount' => (float) $price['amount'],
+                'sort_order' => $index + 1,
+                'is_active' => true,
+            ];
+
+            if (! empty($price['id'])) {
+                $productPrice = $product->prices()->whereKey($price['id'])->firstOrFail();
+                $productPrice->update($payload);
+            } else {
+                $productPrice = $product->prices()->create($payload);
+            }
+
+            $submittedIds[] = $productPrice->id;
+            $legacyPrices[] = $payload['amount'];
+        }
+
+        $product->prices()
+            ->whereNotIn('id', $submittedIds)
+            ->update(['is_active' => false]);
+
+        $product->update([
+            'sale_price_1' => $legacyPrices[0] ?? 0,
+            'sale_price_2' => $legacyPrices[1] ?? null,
+            'sale_price_3' => $legacyPrices[2] ?? null,
+            'precio' => $legacyPrices[0] ?? 0,
+        ]);
+    }
+
     private function normalizeProductData(array &$data): void
     {
         $data['taxable'] = (bool) ($data['taxable'] ?? false);
         $data['perishable'] = (bool) ($data['perishable'] ?? false);
         $data['inventoryable'] = (bool) ($data['inventoryable'] ?? false);
-        $data['precio'] = $data['sale_price_1'];
+        unset($data['sale_price_1'], $data['sale_price_2'], $data['sale_price_3']);
 
         if (! $data['perishable']) {
             $data['expires_at'] = null;

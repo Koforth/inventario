@@ -41,7 +41,7 @@
             <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center gap-3 mb-4">
                 <div>
                     <h2 class="h5 mb-1">Movimientos</h2>
-                    <div class="text-muted small">Detalle filtrado de entradas, ventas, mermas y traslados.</div>
+                    <div class="text-muted small">Detalle filtrado de cualquier tipo de movimiento.</div>
                 </div>
                 <a
                     href="{{ route('reports.export', request()->only(['tipo', 'date_from', 'date_to', 'search'])) }}"
@@ -55,10 +55,11 @@
                     <label for="tipo" class="form-label fw-semibold">Tipo de movimiento</label>
                     <select id="tipo" name="tipo" class="form-select">
                         <option value="todos" @selected($tipo === 'todos')>Todos</option>
-                        <option value="entrada" @selected($tipo === 'entrada')>Entradas</option>
-                        <option value="venta" @selected($tipo === 'venta')>Ventas</option>
-                        <option value="merma" @selected($tipo === 'merma')>Mermas</option>
-                        <option value="traslado" @selected($tipo === 'traslado')>Traslados</option>
+                        @foreach ($movementTypes as $movementType)
+                            <option value="{{ $movementType }}" @selected($tipo === $movementType)>
+                                {{ ucfirst($movementType) }}
+                            </option>
+                        @endforeach
                     </select>
                 </div>
                 <div class="col-md-2">

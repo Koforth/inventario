@@ -6,6 +6,7 @@
     <title>@yield('title', 'Sistema de Inventario')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <style>
         :root {
             --topbar-height: 72px;
@@ -259,7 +260,7 @@
                         </a>
                     @endcan
 
-                    @can('reports.view')
+                    @can('reports.manage')
                         <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                             <i class="bi bi-bar-chart"></i>
                             <span>Reportes</span>
@@ -522,6 +523,24 @@
                     sidebar.classList.remove('open');
                     backdrop.classList.remove('show');
                 }
+            });
+
+            document.querySelectorAll('.js-collapse-toggle[data-bs-target]').forEach((button) => {
+                const target = document.querySelector(button.getAttribute('data-bs-target'));
+                const icon = button.querySelector('i.fas');
+
+                if (!target || !icon) {
+                    return;
+                }
+
+                const syncIcon = (expanded) => {
+                    icon.classList.toggle('fa-plus', !expanded);
+                    icon.classList.toggle('fa-minus', expanded);
+                };
+
+                syncIcon(target.classList.contains('show'));
+                target.addEventListener('shown.bs.collapse', () => syncIcon(true));
+                target.addEventListener('hidden.bs.collapse', () => syncIcon(false));
             });
         });
     </script>

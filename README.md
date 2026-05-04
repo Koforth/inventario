@@ -137,7 +137,7 @@ Adicionalmente:
 
 #### 2) Administrador
 
-- Home, Catalogo, Productos, Almacen, Reportes, Clientes, Ventas, Caja, Compras, Cotizaciones, Tecnicos, Taller, Apartados, Kardex, Comprobantes.
+- Home, Catalogo, Productos, Almacen, Clientes, Ventas, Caja, Compras, Cotizaciones, Tecnicos, Taller, Apartados, Kardex, Comprobantes.
 - No: seguridad critica avanzada reservada a super-admin.
 
 #### 3) Vendedor / Cajero
@@ -158,12 +158,12 @@ Adicionalmente:
 
 #### 6) Contabilidad / Caja
 
-- Caja, Reportes, Ventas, Compras, Comprobantes.
+- Caja, Ventas, Compras, Comprobantes.
 - No: Usuarios, Taller, configuracion sensible.
 
 #### 7) Gerencia
 
-- Reportes, Ventas, Compras, Caja, Kardex, Clientes.
+- Ventas, Compras, Caja, Kardex, Clientes.
 - Uso comun: lectura/supervision.
 
 #### Invitado
@@ -185,7 +185,7 @@ Adicionalmente:
 - `layaways.manage`
 - `receipts.manage`
 - `purchases.manage`
-- `reports.view`
+- `reports.manage`
 - `technicians.manage`
 - `workshop.manage`
 - `users.manage`
@@ -221,7 +221,7 @@ Todas las rutas de negocio estan bajo `auth` y ademas en grupos `can:<permiso>`.
 - `cash.manage`: `/cash` + apertura/cierre/movimientos
 - `purchases.manage`: `/purchases`, `/suppliers`, creditos y abonos
 - `quotes.manage`: `/quotes`
-- `reports.view`: `/reports`, `/reports/export`
+- `reports.manage`: `/reports`, `/reports/export`
 
 ### Taller y tecnicos
 
@@ -451,6 +451,11 @@ Incluye:
 - Ruta: `/users`
 - Gestion de usuarios y asignacion de roles.
 - Restriccion: usuario autenticado no se autoedita.
+- La seleccion de roles en crear/editar usuario esta organizada en cards colapsables:
+  - Roles por modulo
+  - Roles especiales
+  - Roles con mas de un permiso
+  - Roles con un solo permiso
 
 ## Comprobantes y correlativos
 

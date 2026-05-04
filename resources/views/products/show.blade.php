@@ -12,7 +12,7 @@
         </div>
         <div class="d-grid d-sm-flex gap-2 w-100 w-sm-auto">
             <a href="{{ route('products.index') }}" class="btn btn-outline-secondary">Volver</a>
-            @can('manage-products')
+            @can('products.manage')
                 <a href="{{ route('products.edit', $product) }}" class="btn btn-primary">Editar</a>
             @endcan
         </div>
@@ -117,7 +117,7 @@
                         <div class="col-6">
                             <div class="bg-light rounded p-3">
                                 <div class="text-muted small fw-semibold text-uppercase">Venta 1</div>
-                                <div class="h4 mb-0">C$ {{ number_format((float) $product->sale_price_1, 2) }}</div>
+                                <div class="h4 mb-0">C$ {{ number_format($product->primaryPrice(), 2) }}</div>
                             </div>
                         </div>
                     </div>
@@ -129,8 +129,9 @@
 
                     <div class="mt-3 bg-light rounded p-3">
                         <div class="text-muted small fw-semibold text-uppercase">Precios alternos</div>
-                        <div>Venta 2: C$ {{ number_format((float) ($product->sale_price_2 ?? 0), 2) }}</div>
-                        <div>Venta 3: C$ {{ number_format((float) ($product->sale_price_3 ?? 0), 2) }}</div>
+                        @foreach ($product->prices->where('is_active', true)->skip(1) as $price)
+                            <div>{{ $price->label }}: C$ {{ number_format((float) $price->amount, 2) }}</div>
+                        @endforeach
                     </div>
 
                     <div class="mt-3 bg-light rounded p-3">

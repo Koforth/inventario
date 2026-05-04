@@ -72,6 +72,25 @@ class Product extends Model
         return $this->hasMany(ProductImage::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    public function prices()
+    {
+        return $this->hasMany(ProductPrice::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function activePrices()
+    {
+        return $this->prices()->where('is_active', true);
+    }
+
+    public function primaryPrice(): float
+    {
+        $price = $this->relationLoaded('prices')
+            ? $this->prices->firstWhere('is_active', true)
+            : $this->activePrices()->first();
+
+        return (float) ($price?->amount ?? $this->sale_price_1 ?? $this->precio ?? 0);
+    }
+
     public function suppliers()
     {
         return $this->belongsToMany(Supplier::class)->withTimestamps();
@@ -92,5 +111,20 @@ class Product extends Model
     public function saleItems()
     {
         return $this->hasMany(SaleItem::class);
+    }
+
+    public function purchaseItems()
+    {
+        return $this->hasMany(PurchaseItem::class);
+    }
+
+    public function quoteItems()
+    {
+        return $this->hasMany(QuoteItem::class);
+    }
+
+    public function layawayItems()
+    {
+        return $this->hasMany(LayawayItem::class);
     }
 }

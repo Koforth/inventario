@@ -38,21 +38,27 @@
                                         <div class="text-muted small">{{ $product->barcode ?: $product->sku }}</div>
                                     </td>
                                     <td class="text-end small">
-                                        P1 C$ {{ number_format((float) $product->sale_price_1, 2) }}<br>
-                                        P2 C$ {{ number_format((float) ($product->sale_price_2 ?: $product->sale_price_1), 2) }}<br>
-                                        P3 C$ {{ number_format((float) ($product->sale_price_3 ?: $product->sale_price_1), 2) }}
+                                        @foreach ($product->prices->where('is_active', true)->take(3) as $price)
+                                            {{ $price->label }} C$ {{ number_format((float) $price->amount, 2) }}<br>
+                                        @endforeach
                                     </td>
                                     <td class="text-center fw-bold">{{ $product->stock }}</td>
                                     <td class="text-end">
+                                        @php
+                                            $priceOptions = $product->prices->where('is_active', true)->values()->map(fn ($price, $index) => [
+                                                'id' => $price->id,
+                                                'label' => $price->label,
+                                                'amount' => (float) $price->amount,
+                                                'type' => $index + 1,
+                                            ]);
+                                        @endphp
                                         <button
                                             type="button"
                                             class="btn btn-success btn-sm js-add-item"
                                             data-id="{{ $product->id }}"
                                             data-name="{{ $product->nombre }}"
                                             data-stock="{{ $product->stock }}"
-                                            data-p1="{{ (float) $product->sale_price_1 }}"
-                                            data-p2="{{ (float) ($product->sale_price_2 ?: $product->sale_price_1) }}"
-                                            data-p3="{{ (float) ($product->sale_price_3 ?: $product->sale_price_1) }}"
+                                            data-prices='@json($priceOptions)'
                                         >Agregar</button>
                                     </td>
                                 </tr>
@@ -263,13 +269,14 @@
             const toGroup = document.getElementById('toGroup');
             const monthGroup = document.getElementById('monthGroup');
 
-            const recalc = () => {
+            const cartTotals = () => {
                 let subtotal = 0;
                 let discount = 0;
                 let total = 0;
 
                 cart.forEach((item) => {
-                    const unitPrice = Number(item['p' + item.priceType]);
+                    const selectedPrice = item.prices.find((price) => price.id === item.priceId) || item.prices[0];
+                    const unitPrice = Number(selectedPrice?.amount || 0);
                     const lineSubtotal = unitPrice * item.quantity;
                     const lineDiscount = Math.min(lineSubtotal, item.discount);
                     item.lineTotal = lineSubtotal - lineDiscount;
@@ -278,12 +285,38 @@
                     total += item.lineTotal;
                 });
 
+                return { subtotal, discount, total };
+            };
+
+            const updatePaymentFields = () => {
+                const method = paymentMethod.value;
+                const cashDisabled = method === 'tarjeta';
+                const cardDisabled = method === 'efectivo';
+
+                if (cashDisabled) {
+                    cashAmount.value = '0';
+                }
+
+                if (cardDisabled) {
+                    cardAmount.value = '0';
+                }
+
+                cashAmount.disabled = cashDisabled;
+                cardAmount.disabled = cardDisabled;
+                cashAmount.classList.toggle('bg-light', cashDisabled);
+                cardAmount.classList.toggle('bg-light', cardDisabled);
+            };
+
+            const recalc = () => {
+                updatePaymentFields();
+
+                const { subtotal, discount, total } = cartTotals();
                 subtotalLabel.textContent = 'C$ ' + money(subtotal);
                 discountLabel.textContent = 'C$ ' + money(discount);
                 totalLabel.textContent = 'C$ ' + money(total);
                 const paid = Number(cashAmount.value || 0) + Number(cardAmount.value || 0);
                 changeLabel.textContent = 'C$ ' + money(Math.max(paid - total, 0));
-                itemsInput.value = JSON.stringify(cart.map(({ id, quantity, priceType, discount }) => ({ product_id: id, quantity, price_type: priceType, discount })));
+                itemsInput.value = JSON.stringify(cart.map(({ id, priceId, priceType, quantity, discount }) => ({ product_id: id, price_id: priceId, price_type: priceType, quantity, discount })));
             };
 
             const render = () => {
@@ -295,7 +328,8 @@
 
                 cartBody.innerHTML = cart.map((item, index) => `
                     ${(() => {
-                        const unitPrice = Number(item['p' + item.priceType] || 0);
+                        const selectedPrice = item.prices.find((price) => price.id === item.priceId) || item.prices[0];
+                        const unitPrice = Number(selectedPrice?.amount || 0);
                         const lineSubtotal = unitPrice * Number(item.quantity || 0);
                         const lineDiscount = Math.min(lineSubtotal, Number(item.discount || 0));
                         const previewTotal = lineSubtotal - lineDiscount;
@@ -305,9 +339,7 @@
                         <td><input type="number" min="1" max="${item.stock}" value="${item.quantity}" class="form-control form-control-sm text-end js-qty" data-index="${index}"></td>
                         <td>
                             <select class="form-select form-select-sm js-price" data-index="${index}">
-                                <option value="1" ${item.priceType === 1 ? 'selected' : ''}>P1 C$ ${money(item.p1)}</option>
-                                <option value="2" ${item.priceType === 2 ? 'selected' : ''}>P2 C$ ${money(item.p2)}</option>
-                                <option value="3" ${item.priceType === 3 ? 'selected' : ''}>P3 C$ ${money(item.p3)}</option>
+                                ${item.prices.map((price) => `<option value="${price.id}" ${item.priceId === price.id ? 'selected' : ''}>${price.label} C$ ${money(price.amount)}</option>`).join('')}
                             </select>
                         </td>
                         <td><input type="number" min="0" step="0.01" value="${money(item.discount)}" class="form-control form-control-sm text-end js-discount" data-index="${index}"></td>
@@ -328,7 +360,13 @@
                     if (exists) {
                         exists.quantity = Math.min(exists.quantity + 1, exists.stock);
                     } else {
-                        cart.push({ id, name: button.dataset.name, stock: Number(button.dataset.stock), quantity: 1, priceType: 1, discount: 0, p1: Number(button.dataset.p1), p2: Number(button.dataset.p2), p3: Number(button.dataset.p3) });
+                        const prices = JSON.parse(button.dataset.prices || '[]');
+                        if (!prices.length) {
+                            alert('Este producto no tiene precios activos.');
+                            return;
+                        }
+
+                        cart.push({ id, name: button.dataset.name, stock: Number(button.dataset.stock), quantity: 1, priceId: prices[0].id, priceType: prices[0].type, discount: 0, prices });
                     }
                     render();
                 });
@@ -340,7 +378,12 @@
                 if (Number.isNaN(index) || !cart[index]) return;
 
                 if (el.classList.contains('js-qty')) cart[index].quantity = Math.max(1, Math.min(Number(el.value || 1), cart[index].stock));
-                if (el.classList.contains('js-price')) cart[index].priceType = Number(el.value || 1);
+                if (el.classList.contains('js-price')) {
+                    const priceId = Number(el.value);
+                    const selectedPrice = cart[index].prices.find((price) => price.id === priceId);
+                    cart[index].priceId = priceId;
+                    cart[index].priceType = selectedPrice?.type || 1;
+                }
                 if (el.classList.contains('js-discount')) cart[index].discount = Math.max(0, Number(el.value || 0));
                 render();
             });
@@ -386,8 +429,20 @@
                 if (saleType.value === 'credito' && !customerId.value) {
                     event.preventDefault();
                     alert('Debes seleccionar un cliente para venta al credito.');
+                    return;
+                }
+
+                const { total } = cartTotals();
+                const paid = Number(cashAmount.value || 0) + Number(cardAmount.value || 0);
+
+                if (saleType.value === 'contado' && paid < total) {
+                    event.preventDefault();
+                    alert('El monto pagado no cubre el total de la venta.');
+                    return;
                 }
             });
+
+            recalc();
         });
     </script>
 @endsection

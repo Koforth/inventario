@@ -55,8 +55,8 @@
                     </div>
                 </form>
 
-                <p class="mb-0 mt-3 text-center">
-                    <a href="{{ route('register') }}">Crear una cuenta nueva</a>
+                <p class="mb-0 mt-3 text-center text-muted small">
+                    Solicita tu usuario al administrador del sistema.
                 </p>
             </div>
         </div>
