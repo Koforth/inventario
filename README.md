@@ -437,7 +437,7 @@ Incluye:
 
 - Ruta: `/reports`
 - Incluye:
-  - movimientos
+  - movimientos (cualquier tipo registrado en base de datos)
   - ventas
   - entradas
   - mermas
@@ -445,6 +445,7 @@ Incluye:
   - bajo stock
   - valor inventario
 - Exportacion disponible.
+- Acceso restringido por permiso `reports.manage` (operativamente asignado a `super-admin`).
 
 ### Usuarios
 
@@ -456,6 +457,7 @@ Incluye:
   - Roles especiales
   - Roles con mas de un permiso
   - Roles con un solo permiso
+- Las cards usan icono colapsable tipo `plus/minus`.
 
 ## Comprobantes y correlativos
 
@@ -480,6 +482,15 @@ Incluye:
 3. Se arma `prefijo + numero con padding`.
 4. Se guarda en la venta.
 5. Se incrementa `current_number`.
+
+### Numeracion de compras y cotizaciones (concurrencia)
+
+- `purchases.number` y `quotes.number` tienen restriccion unica en base de datos.
+- La generacion usa estrategia atomica:
+  - transaccion DB
+  - lectura del ultimo correlativo del dia con `lockForUpdate()`
+  - incremento secuencial seguro
+- Se aplica reintento ante colision unica para tolerar concurrencia alta.
 
 ## Base de datos
 

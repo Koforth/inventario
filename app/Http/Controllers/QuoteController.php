@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Quote;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,53 +69,68 @@ class QuoteController extends Controller
             'items.*.quantity' => ['required', 'integer', 'min:1'],
         ]);
 
-        $quote = DB::transaction(function () use ($data) {
-            $quote = Quote::create([
-                'number' => $this->nextNumber(),
-                'customer_name' => $data['customer_name'],
-                'customer_email' => $data['customer_email'] ?? null,
-                'customer_phone' => $data['customer_phone'] ?? null,
-                'notes' => $data['notes'] ?? null,
-                'user_id' => auth()->id(),
-            ]);
+        $maxAttempts = 3;
+        $quote = null;
 
-            $subtotal = 0;
-            $tax = 0;
-            $total = 0;
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                $quote = DB::transaction(function () use ($data) {
+                    $quote = Quote::create([
+                        'number' => $this->nextNumber(),
+                        'customer_name' => $data['customer_name'],
+                        'customer_email' => $data['customer_email'] ?? null,
+                        'customer_phone' => $data['customer_phone'] ?? null,
+                        'notes' => $data['notes'] ?? null,
+                        'user_id' => auth()->id(),
+                    ]);
 
-            foreach ($data['items'] as $item) {
-                $product = Product::findOrFail($item['product_id']);
-                $quantity = (int) $item['quantity'];
-                $unitPrice = (float) $product->sale_price_1;
-                $lineSubtotal = $quantity * $unitPrice;
-                $lineTax = $product->taxable ? $lineSubtotal * self::TAX_RATE : 0;
-                $lineTotal = $lineSubtotal + $lineTax;
+                    $subtotal = 0;
+                    $tax = 0;
+                    $total = 0;
 
-                $quote->items()->create([
-                    'product_id' => $product->id,
-                    'product_name' => $product->nombre,
-                    'sku' => $product->sku,
-                    'quantity' => $quantity,
-                    'unit_price' => $unitPrice,
-                    'taxable' => $product->taxable,
-                    'line_subtotal' => $lineSubtotal,
-                    'line_tax' => $lineTax,
-                    'line_total' => $lineTotal,
-                ]);
+                    foreach ($data['items'] as $item) {
+                        $product = Product::findOrFail($item['product_id']);
+                        $quantity = (int) $item['quantity'];
+                        $unitPrice = (float) $product->sale_price_1;
+                        $lineSubtotal = $quantity * $unitPrice;
+                        $lineTax = $product->taxable ? $lineSubtotal * self::TAX_RATE : 0;
+                        $lineTotal = $lineSubtotal + $lineTax;
 
-                $subtotal += $lineSubtotal;
-                $tax += $lineTax;
-                $total += $lineTotal;
+                        $quote->items()->create([
+                            'product_id' => $product->id,
+                            'product_name' => $product->nombre,
+                            'sku' => $product->sku,
+                            'quantity' => $quantity,
+                            'unit_price' => $unitPrice,
+                            'taxable' => $product->taxable,
+                            'line_subtotal' => $lineSubtotal,
+                            'line_tax' => $lineTax,
+                            'line_total' => $lineTotal,
+                        ]);
+
+                        $subtotal += $lineSubtotal;
+                        $tax += $lineTax;
+                        $total += $lineTotal;
+                    }
+
+                    $quote->update([
+                        'subtotal' => $subtotal,
+                        'tax' => $tax,
+                        'total' => $total,
+                    ]);
+
+                    return $quote;
+                });
+
+                break;
+            } catch (QueryException $exception) {
+                if ($attempt < $maxAttempts && $this->isUniqueConstraintViolation($exception)) {
+                    continue;
+                }
+
+                throw $exception;
             }
-
-            $quote->update([
-                'subtotal' => $subtotal,
-                'tax' => $tax,
-                'total' => $total,
-            ]);
-
-            return $quote;
-        });
+        }
 
         return redirect()
             ->route('quotes.show', $quote)
@@ -131,8 +147,23 @@ class QuoteController extends Controller
     private function nextNumber(): string
     {
         $prefix = 'COT-' . now()->format('Ymd') . '-';
-        $next = Quote::where('number', 'like', $prefix . '%')->count() + 1;
+        $lastNumber = Quote::query()
+            ->where('number', 'like', $prefix . '%')
+            ->lockForUpdate()
+            ->orderByDesc('number')
+            ->value('number');
+
+        $next = 1;
+        if ($lastNumber) {
+            $sequence = (int) substr($lastNumber, strlen($prefix));
+            $next = $sequence + 1;
+        }
 
         return $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function isUniqueConstraintViolation(QueryException $exception): bool
+    {
+        return (string) ($exception->errorInfo[0] ?? '') === '23000';
     }
 }

@@ -138,6 +138,10 @@ Permite:
 - registrar abonos,
 - revisar historial de precios.
 
+Nota tecnica-operativa:
+
+- La numeracion de compras es secuencial diaria y segura frente a operaciones simultaneas.
+
 ## 11) Almacen y Kardex
 
 ### Almacen
@@ -206,7 +210,7 @@ Ruta: **Reportes**
 
 Incluye:
 
-- movimientos de inventario,
+- movimientos de inventario (cualquier tipo de movimiento registrado),
 - ventas,
 - entradas,
 - mermas y traslados,
@@ -253,3 +257,4 @@ En crear/editar usuario, los roles se muestran en bloques colapsables para facil
 - Roles especiales
 - Roles con mas de un permiso
 - Roles con un solo permiso
+- Cada card se puede expandir/contraer con icono `plus/minus`.
