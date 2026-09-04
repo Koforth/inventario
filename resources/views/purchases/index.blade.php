@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Compras | Sistema de Inventario')
+@section('title', 'Compras | SmartZone')
 @section('page-title', 'Compras')
 @section('page-subtitle', 'Consulta por fechas o por mes')
 

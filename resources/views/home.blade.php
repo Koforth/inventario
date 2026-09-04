@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Dashboard | Sistema de Inventario')
+@section('title', 'Dashboard | SmartZone')
 @section('page-title', 'Dashboard')
 @section('page-subtitle', 'Resumen operativo del negocio en tiempo real')
 
@@ -10,6 +10,40 @@
         <div class="col-md-6 col-xl-3"><div class="metric-card p-4 h-100"><div class="text-muted small text-uppercase fw-semibold">Caja</div><div class="display-6 fw-bold {{ $stats['cash_open'] ? 'text-success' : 'text-secondary' }}">{{ $stats['cash_open'] ? 'Abierta' : 'Cerrada' }}</div><div class="small">Ingresos hoy: C$ {{ number_format($stats['cash_in_today'], 2) }}</div></div></div>
         <div class="col-md-6 col-xl-3"><div class="metric-card p-4 h-100"><div class="text-muted small text-uppercase fw-semibold">Bajo stock</div><div class="display-6 fw-bold text-warning">{{ $stats['low_stock'] }}</div><div class="small">Valor inventario: C$ {{ number_format($stats['inventory_value'], 2) }}</div></div></div>
         <div class="col-md-6 col-xl-3"><div class="metric-card p-4 h-100"><div class="text-muted small text-uppercase fw-semibold">Apartados pendientes</div><div class="display-6 fw-bold">{{ $stats['layaways_pending'] }}</div><div class="small text-danger">Credito pendiente: C$ {{ number_format($stats['credit_sales_pending'], 2) }}</div></div></div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-xl-6">
+            <div class="table-card h-100">
+                <div class="border-bottom p-3 p-md-4 d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">Ventas ultimos 7 dias</h2>
+                    <span class="text-muted small">Monto (C$)</span>
+                </div>
+                <div class="p-3 p-md-4">
+                    <canvas id="chartSalesWeekly" height="110"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3">
+            <div class="table-card h-100">
+                <div class="border-bottom p-3 p-md-4">
+                    <h2 class="h5 mb-0">Productos por categoria</h2>
+                </div>
+                <div class="p-3 p-md-4 d-flex align-items-center justify-content-center">
+                    <canvas id="chartSalesByCategory" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3">
+            <div class="table-card h-100">
+                <div class="border-bottom p-3 p-md-4">
+                    <h2 class="h5 mb-0">Mas vendidos</h2>
+                </div>
+                <div class="p-3 p-md-4 d-flex align-items-center justify-content-center">
+                    <canvas id="chartTopSelling" height="200"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="row g-4 mb-4">
@@ -116,3 +150,80 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        const chartLabels = @json($chartLabels);
+        const salesSeries = @json($salesSeries);
+        const salesCountSeries = @json($salesCountSeries);
+        const categoryData = @json($salesByCategory);
+        const topSellingData = @json($topSellingProducts);
+
+        const CURRENCY = (value) => 'C$ ' + Number(value).toLocaleString('es-NI', { minimumFractionDigits: 2 });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new Chart(document.getElementById('chartSalesWeekly'), {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        label: 'Ventas (C$)',
+                        data: salesSeries,
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ctx.dataset.label + ': ' + CURRENCY(ctx.raw),
+                            },
+                        },
+                    },
+                    scales: { y: { beginAtZero: true, ticks: { callback: (v) => 'C$' + v } } },
+                },
+            });
+
+            new Chart(document.getElementById('chartSalesByCategory'), {
+                type: 'doughnut',
+                data: {
+                    labels: categoryData.map((item) => item.label),
+                    datasets: [{
+                        data: categoryData.map((item) => item.value),
+                        backgroundColor: ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#8b5cf6', '#0ea5e9'],
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12 } },
+                    },
+                },
+            });
+
+            new Chart(document.getElementById('chartTopSelling'), {
+                type: 'bar',
+                data: {
+                    labels: topSellingData.map((item) => item.label.length > 14 ? item.label.slice(0, 13) + '...' : item.label),
+                    datasets: [{
+                        label: 'Unidades',
+                        data: topSellingData.map((item) => item.value),
+                        backgroundColor: '#16a34a',
+                        borderRadius: 6,
+                    }],
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+                },
+            });
+        });
+    </script>
+@endpush

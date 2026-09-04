@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Productos | Sistema de Inventario')
+@section('title', 'Productos | SmartZone')
 @section('page-title', 'Catalogo de productos')
 @section('page-subtitle', 'Consulta de existencias, stock minimo, marca y categoria')
 

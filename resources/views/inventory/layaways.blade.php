@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Apartados | Sistema de Inventario')
+@section('title', 'Apartados | SmartZone')
 @section('page-title', 'Apartados')
 @section('page-subtitle', 'Separar productos, consultar retiros y gestionar ventas al credito')
 

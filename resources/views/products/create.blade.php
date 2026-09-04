@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Nuevo producto | Sistema de Inventario')
+@section('title', 'Nuevo producto | SmartZone')
 @section('page-title', 'Nuevo producto')
 @section('page-subtitle', 'Registro de producto para inventario')
 

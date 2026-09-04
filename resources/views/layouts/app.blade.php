@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'Sistema de Inventario')</title>
+    <title>@yield('title', 'SmartZone')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
@@ -12,7 +12,7 @@
             <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
                 <a href="{{ route('products.index') }}" class="group">
                     <span class="block text-xs font-semibold uppercase tracking-widest text-emerald-700">sisinventario</span>
-                    <span class="text-2xl font-bold text-slate-950">Sistema de Inventario</span>
+                    <span class="text-2xl font-bold text-slate-950">SmartZone</span>
                 </a>
                 <nav class="flex flex-wrap items-center gap-2">
                     <a href="{{ route('products.index') }}" class="rounded-md px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">Productos</a>

@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Almacen | Sistema de Inventario')
+@section('title', 'Almacen | SmartZone')
 @section('page-title', 'Almacen')
 @section('page-subtitle', 'Catalogos, productos y control de perecederos')
 

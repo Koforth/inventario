@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CashRegisterController;
 use App\Http\Controllers\CategoryController;
@@ -15,6 +16,8 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\ReceiptTypeController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\RoleManagementController;
+use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TechnicianController;
 use App\Http\Controllers\UserManagementController;
@@ -66,6 +69,14 @@ Route::middleware('auth')->group(function () {
     Route::middleware('can:reports.manage')->group(function () {
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+        Route::get('/reports/sales', [ReportController::class, 'salesReport'])->name('reports.sales');
+        Route::get('/reports/sales/export', [ReportController::class, 'exportSales'])->name('reports.sales.export');
+        Route::get('/reports/purchases', [ReportController::class, 'purchasesReport'])->name('reports.purchases');
+        Route::get('/reports/purchases/export', [ReportController::class, 'exportPurchases'])->name('reports.purchases.export');
+        Route::get('/reports/debtors', [ReportController::class, 'debtorsReport'])->name('reports.debtors');
+        Route::get('/reports/debtors/export', [ReportController::class, 'exportDebtors'])->name('reports.debtors.export');
+        Route::get('/reports/catalog', [ReportController::class, 'catalogReport'])->name('reports.catalog');
+        Route::get('/reports/catalog/export', [ReportController::class, 'exportCatalog'])->name('reports.catalog.export');
     });
 
     Route::middleware('can:users.manage')->group(function () {
@@ -74,6 +85,15 @@ Route::middleware('auth')->group(function () {
         Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
         Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
         Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
+    });
+
+    Route::middleware('can:roles.manage')->group(function () {
+        Route::get('/roles', [RoleManagementController::class, 'index'])->name('roles.index');
+        Route::get('/roles/create', [RoleManagementController::class, 'create'])->name('roles.create');
+        Route::post('/roles', [RoleManagementController::class, 'store'])->name('roles.store');
+        Route::get('/roles/{role}/edit', [RoleManagementController::class, 'edit'])->name('roles.edit');
+        Route::put('/roles/{role}', [RoleManagementController::class, 'update'])->name('roles.update');
+        Route::delete('/roles/{role}', [RoleManagementController::class, 'destroy'])->name('roles.destroy');
     });
 
     Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show')->can('catalog.view');
@@ -92,6 +112,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('can:sales.manage')->group(function () {
         Route::get('/inventory/sales', [InventoryController::class, 'sales'])->name('inventory.sales.index');
         Route::post('/inventory/sales', [InventoryController::class, 'processSale'])->name('inventory.sales.process');
+        Route::get('/sales/{sale}/print', [SaleController::class, 'print'])->name('sales.print');
     });
 
     Route::middleware('can:layaways.manage')->group(function () {
@@ -151,5 +172,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/cash/open', [CashRegisterController::class, 'open'])->name('cash.open');
         Route::put('/cash/{cashRegister}/close', [CashRegisterController::class, 'close'])->name('cash.close');
         Route::post('/cash/{cashRegister}/movements', [CashRegisterController::class, 'movement'])->name('cash.movements.store');
+    });
+
+    Route::middleware('can:settings.manage')->group(function () {
+        Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
+        Route::post('/backup/create', [BackupController::class, 'create'])->name('backup.create');
+        Route::post('/backup/restore', [BackupController::class, 'restore'])->name('backup.restore');
+        Route::post('/backup/{file}/restore', [BackupController::class, 'restoreFile'])->name('backup.restore-file');
+        Route::get('/backup/{file}/download', [BackupController::class, 'download'])->name('backup.download');
+        Route::delete('/backup/{file}', [BackupController::class, 'destroy'])->name('backup.destroy');
     });
 });

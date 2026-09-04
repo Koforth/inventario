@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Clientes | Sistema de Inventario')
+@section('title', 'Clientes | SmartZone')
 @section('page-title', 'Clientes')
 @section('page-subtitle', 'Gestion de clientes para ventas al contado o credito')
 

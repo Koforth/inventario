@@ -1,10 +1,20 @@
 @extends('layout')
 
-@section('title', 'Reportes | Sistema de Inventario')
+@section('title', 'Reportes | SmartZone')
 @section('page-title', 'Reportes de inventario')
 @section('page-subtitle', 'Movimientos, ventas, entradas y alertas de stock')
 
 @section('content')
+    <div class="table-card mb-4">
+        <div class="p-3 p-md-4 d-flex flex-wrap gap-2">
+            <a href="{{ route('reports.index') }}" class="btn btn-sm {{ request()->routeIs('reports.index') ? 'btn-primary' : 'btn-outline-primary' }}">Movimientos</a>
+            <a href="{{ route('reports.sales') }}" class="btn btn-sm {{ request()->routeIs('reports.sales') ? 'btn-primary' : 'btn-outline-primary' }}">Ventas</a>
+            <a href="{{ route('reports.purchases') }}" class="btn btn-sm {{ request()->routeIs('reports.purchases') ? 'btn-primary' : 'btn-outline-primary' }}">Compras</a>
+            <a href="{{ route('reports.debtors') }}" class="btn btn-sm {{ request()->routeIs('reports.debtors') ? 'btn-primary' : 'btn-outline-primary' }}">Morosos</a>
+            <a href="{{ route('reports.catalog') }}" class="btn btn-sm {{ request()->routeIs('reports.catalog') ? 'btn-primary' : 'btn-outline-primary' }}">Catalogo</a>
+        </div>
+    </div>
+
     <div class="row g-3 mb-4">
         <div class="col-sm-6 col-xl-3">
             <div class="metric-card p-4 h-100">

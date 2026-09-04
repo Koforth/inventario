@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Cotizaciones | Sistema de Inventario')
+@section('title', 'Cotizaciones | SmartZone')
 @section('page-title', 'Cotizaciones')
 @section('page-subtitle', 'Consulta de cotizaciones realizadas entre fechas')
 

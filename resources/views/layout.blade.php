@@ -3,9 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'Sistema de Inventario')</title>
+    <title>@yield('title', 'SmartZone')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <style>
         :root {
@@ -56,6 +57,19 @@
             flex: 0 0 1.1rem;
             text-align: center;
             color: #93c5fd;
+        }
+
+        .sidebar-section-label {
+            padding: .65rem .75rem .3rem;
+            font-size: .68rem;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: #6b7280;
+        }
+
+        .sidebar-section-label:not(:first-child) {
+            margin-top: .5rem;
         }
 
         .topbar {
@@ -224,15 +238,18 @@
     <div class="app-shell d-flex min-vh-100">
         <aside class="sidebar p-4" id="sidebar">
             <div class="brand-block mb-4">
-                <div class="text-uppercase text-info fw-bold small">sistema</div>
-                <h1 class="h4 mb-0 text-white">Inventario</h1>
+                <div class="text-uppercase text-info fw-bold small">tienda de celulares</div>
+                <h1 class="h4 mb-0 text-white">SmartZone</h1>
             </div>
 
             <nav class="nav flex-column gap-2">
+                <div class="sidebar-section-label">Principal</div>
                 <a href="{{ route('home') }}" class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}">
                     <i class="bi bi-house-door"></i>
                     <span>Home</span>
                 </a>
+
+                <div class="sidebar-section-label">Productos</div>
                 <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.index', 'products.show', 'products.edit') ? 'active' : '' }}">
                     <i class="bi bi-grid"></i>
                     <span>Catalogo</span>
@@ -253,73 +270,25 @@
                         </a>
                     @endcan
 
-                    @can('users.manage')
-                        <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
-                            <i class="bi bi-people"></i>
-                            <span>Usuarios</span>
-                        </a>
-                    @endcan
-
-                    @can('reports.manage')
-                        <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
-                            <i class="bi bi-bar-chart"></i>
-                            <span>Reportes</span>
-                        </a>
-                    @endcan
-
-                    @can('customers.manage')
-                        <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
-                            <i class="bi bi-person-vcard"></i>
-                            <span>Clientes</span>
-                        </a>
-                    @endcan
                     @can('inventory.entries.manage')
                         <a href="{{ route('inventory.entries.index') }}" class="nav-link {{ request()->routeIs('inventory.entries.*') ? 'active' : '' }}">
                             <i class="bi bi-box-arrow-in-down"></i>
                             <span>Entradas</span>
                         </a>
                     @endcan
-                    @can('sales.manage')
-                        <a href="{{ route('inventory.sales.index') }}" class="nav-link {{ request()->routeIs('inventory.sales.*') ? 'active' : '' }}">
-                            <i class="bi bi-cart-check"></i>
-                            <span>Ventas</span>
-                        </a>
-                    @endcan
+
                     @can('kardex.manage')
                         <a href="{{ route('inventory.kardex.index') }}" class="nav-link {{ request()->routeIs('inventory.kardex.*') ? 'active' : '' }}">
                             <i class="bi bi-journal-text"></i>
                             <span>Kardex</span>
                         </a>
                     @endcan
-                    @can('layaways.manage')
-                        <a href="{{ route('inventory.layaways.index') }}" class="nav-link {{ request()->routeIs('inventory.layaways.*') || request()->routeIs('inventory.credit-sales.*') ? 'active' : '' }}">
-                            <i class="bi bi-bookmark-check"></i>
-                            <span>Apartados</span>
-                        </a>
-                    @endcan
-                    @can('technicians.manage')
-                        <a href="{{ route('inventory.technicians.index') }}" class="nav-link {{ request()->routeIs('inventory.technicians.*') ? 'active' : '' }}">
-                            <i class="bi bi-person-gear"></i>
-                            <span>Tecnicos</span>
-                        </a>
-                    @endcan
-                    @can('workshop.manage')
-                        <a href="{{ route('inventory.workshop.index') }}" class="nav-link {{ request()->routeIs('inventory.workshop.*') ? 'active' : '' }}">
-                            <i class="bi bi-tools"></i>
-                            <span>Taller</span>
-                        </a>
-                    @endcan
-                    @can('receipts.manage')
-                        <a href="{{ route('inventory.receipts.index') }}" class="nav-link {{ request()->routeIs('inventory.receipts.*') ? 'active' : '' }}">
-                            <i class="bi bi-receipt"></i>
-                            <span>Comprobantes</span>
-                        </a>
-                    @endcan
 
-                    @can('cash.manage')
-                        <a href="{{ route('cash.index') }}" class="nav-link {{ request()->routeIs('cash.*') ? 'active' : '' }}">
-                            <i class="bi bi-cash-stack"></i>
-                            <span>Caja</span>
+                    <div class="sidebar-section-label">Ventas</div>
+                    @can('sales.manage')
+                        <a href="{{ route('inventory.sales.index') }}" class="nav-link {{ request()->routeIs('inventory.sales.*') ? 'active' : '' }}">
+                            <i class="bi bi-cart-check"></i>
+                            <span>Ventas</span>
                         </a>
                     @endcan
 
@@ -330,11 +299,109 @@
                         </a>
                     @endcan
 
+                    @can('customers.manage')
+                        <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
+                            <i class="bi bi-person-vcard"></i>
+                            <span>Clientes</span>
+                        </a>
+                    @endcan
+
+                    @can('layaways.manage')
+                        <a href="{{ route('inventory.layaways.index') }}" class="nav-link {{ request()->routeIs('inventory.layaways.*') || request()->routeIs('inventory.credit-sales.*') ? 'active' : '' }}">
+                            <i class="bi bi-bookmark-check"></i>
+                            <span>Apartados</span>
+                        </a>
+                    @endcan
+
+                    <div class="sidebar-section-label">Caja y Compras</div>
+                    @can('cash.manage')
+                        <a href="{{ route('cash.index') }}" class="nav-link {{ request()->routeIs('cash.*') ? 'active' : '' }}">
+                            <i class="bi bi-cash-stack"></i>
+                            <span>Caja</span>
+                        </a>
+                    @endcan
+
                     @can('purchases.manage')
                         <a href="{{ route('purchases.index') }}" class="nav-link {{ request()->routeIs('purchases.*') || request()->routeIs('suppliers.*') ? 'active' : '' }}">
                             <i class="bi bi-bag-check"></i>
                             <span>Compras</span>
                         </a>
+                    @endcan
+
+                    @can('receipts.manage')
+                        <a href="{{ route('inventory.receipts.index') }}" class="nav-link {{ request()->routeIs('inventory.receipts.*') ? 'active' : '' }}">
+                            <i class="bi bi-receipt"></i>
+                            <span>Comprobantes</span>
+                        </a>
+                    @endcan
+
+                    <div class="sidebar-section-label">Servicios</div>
+                    @can('technicians.manage')
+                        <a href="{{ route('inventory.technicians.index') }}" class="nav-link {{ request()->routeIs('inventory.technicians.*') ? 'active' : '' }}">
+                            <i class="bi bi-person-gear"></i>
+                            <span>Tecnicos</span>
+                        </a>
+                    @endcan
+
+                    @can('workshop.manage')
+                        <a href="{{ route('inventory.workshop.index') }}" class="nav-link {{ request()->routeIs('inventory.workshop.*') ? 'active' : '' }}">
+                            <i class="bi bi-tools"></i>
+                            <span>Taller</span>
+                        </a>
+                    @endcan
+
+                    <div class="sidebar-section-label">Administracion</div>
+                    @can('users.manage')
+                        <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                            <i class="bi bi-people"></i>
+                            <span>Usuarios</span>
+                        </a>
+                    @endcan
+
+                    @can('roles.manage')
+                        <a href="{{ route('roles.index') }}" class="nav-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
+                            <i class="bi bi-shield-lock"></i>
+                            <span>Roles</span>
+                        </a>
+                    @endcan
+
+                    @can('settings.manage')
+                        <a href="{{ route('backup.index') }}" class="nav-link {{ request()->routeIs('backup.*') ? 'active' : '' }}">
+                            <i class="bi bi-database-down"></i>
+                            <span>Backup y Restauracion</span>
+                        </a>
+                    @endcan
+
+                    @can('reports.manage')
+                        <button type="button" class="nav-link w-100 text-start js-collapse-toggle" data-bs-toggle="collapse" data-bs-target="#reportsSubmenu" aria-expanded="{{ request()->routeIs('reports.*') ? 'true' : 'false' }}">
+                            <i class="bi bi-bar-chart"></i>
+                            <span class="flex-grow-1">Reportes</span>
+                            <i class="fas text-muted" style="font-size:.7rem"></i>
+                        </button>
+                        <div class="collapse {{ request()->routeIs('reports.sales', 'reports.purchases', 'reports.debtors', 'reports.catalog') ? 'show' : '' }}" id="reportsSubmenu">
+                            <div class="nav flex-column gap-1 ps-3 mt-1">
+                                <a href="{{ route('reports.index') }}" class="nav-link py-1 {{ request()->routeIs('reports.index') ? 'active' : '' }}">
+                                    <i class="bi bi-arrow-return-right"></i>
+                                    <span>Movimientos</span>
+                                </a>
+                                <a href="{{ route('reports.sales') }}" class="nav-link py-1 {{ request()->routeIs('reports.sales') ? 'active' : '' }}">
+                                    <i class="bi bi-arrow-return-right"></i>
+                                    <span>Ventas</span>
+                                </a>
+                                <a href="{{ route('reports.purchases') }}" class="nav-link py-1 {{ request()->routeIs('reports.purchases') ? 'active' : '' }}">
+                                    <i class="bi bi-arrow-return-right"></i>
+                                    <span>Compras</span>
+                                </a>
+                                <a href="{{ route('reports.debtors') }}" class="nav-link py-1 {{ request()->routeIs('reports.debtors') ? 'active' : '' }}">
+                                    <i class="bi bi-arrow-return-right"></i>
+                                    <span>Morosos</span>
+                                </a>
+                                <a href="{{ route('reports.catalog') }}" class="nav-link py-1 {{ request()->routeIs('reports.catalog') ? 'active' : '' }}">
+                                    <i class="bi bi-arrow-return-right"></i>
+                                    <span>Catalogo</span>
+                                </a>
+                            </div>
+                        </div>
                     @endcan
                 @endauth
             </nav>
@@ -348,7 +415,7 @@
                     </button>
                     <div class="topbar-title">
                         <div class="fw-bold">@yield('page-title', 'Catalogo de productos')</div>
-                        <div class="text-muted small">@yield('page-subtitle', 'Control de stock para productos del hogar')</div>
+                        <div class="text-muted small">@yield('page-subtitle', 'Control de stock y facturacion de tienda de celulares')</div>
                     </div>
                 </div>
                 <div class="user-block d-flex align-items-center justify-content-end gap-3 text-end">
@@ -429,6 +496,8 @@
                                 $breadcrumbs[] = ['label' => 'Caja', 'url' => null];
                             } elseif (request()->routeIs('reports.*')) {
                                 $breadcrumbs[] = ['label' => 'Reportes', 'url' => null];
+                            } elseif (request()->routeIs('backup.*')) {
+                                $breadcrumbs[] = ['label' => 'Backup y Restauracion', 'url' => null];
                             } elseif (request()->routeIs('quotes.*')) {
                                 $breadcrumbs[] = ['label' => 'Cotizaciones', 'url' => route('quotes.index')];
 
@@ -456,6 +525,14 @@
 
                                 if (request()->routeIs('users.edit')) {
                                     $breadcrumbs[] = ['label' => 'Editar roles', 'url' => null];
+                                }
+                            } elseif (request()->routeIs('roles.*')) {
+                                $breadcrumbs[] = ['label' => 'Roles', 'url' => route('roles.index')];
+
+                                if (request()->routeIs('roles.create')) {
+                                    $breadcrumbs[] = ['label' => 'Crear rol', 'url' => null];
+                                } elseif (request()->routeIs('roles.edit')) {
+                                    $breadcrumbs[] = ['label' => 'Editar rol', 'url' => null];
                                 }
                             }
                         }
@@ -488,6 +565,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    @stack('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const sidebar = document.getElementById('sidebar');

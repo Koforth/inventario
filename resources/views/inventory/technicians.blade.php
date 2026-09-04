@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Tecnicos | Sistema de Inventario')
+@section('title', 'Tecnicos | SmartZone')
 @section('page-title', 'Tecnicos')
 @section('page-subtitle', 'Listado de tecnicos para reparacion y mantenimiento')
 

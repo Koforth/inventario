@@ -1,12 +1,12 @@
 @extends('layout')
 
-@section('title', 'Bienvenida | Sistema de Inventario')
+@section('title', 'Bienvenida | SmartZone')
 @section('page-title', 'Bienvenida')
 @section('page-subtitle', 'Informacion general del sistema')
 
 @section('content')
     <div class="table-card p-4 p-md-5 mb-4">
-        <h1 class="h3 fw-bold mb-3">Bienvenido a Sistema de Inventario</h1>
+        <h1 class="h3 fw-bold mb-3">Bienvenido a SmartZone</h1>
         <p class="text-muted mb-0">
             Esta plataforma te permite consultar el catalogo de productos, revisar informacion de inventario y
             navegar por los modulos disponibles segun tus permisos.

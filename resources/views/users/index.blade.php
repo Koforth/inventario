@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Usuarios | Sistema de Inventario')
+@section('title', 'Usuarios | SmartZone')
 @section('page-title', 'Usuarios')
 @section('page-subtitle', 'Administracion de roles y permisos del sistema')
 

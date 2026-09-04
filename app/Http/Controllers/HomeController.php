@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashRegister;
+use App\Models\Category;
 use App\Models\Layaway;
 use App\Models\Movement;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\WorkshopOrder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class HomeController extends Controller
@@ -29,6 +32,48 @@ class HomeController extends Controller
         $cashInToday = $openCash
             ? (float) $openCash->movements->whereIn('type', ['sale', 'income'])->sum('amount')
             : 0.0;
+
+        $salesLast7Days = Sale::query()
+            ->where('created_at', '>=', Carbon::now()->subDays(6)->startOfDay())
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as count, SUM(total) as amount')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date');
+
+        $chartDates = collect();
+        for ($i = 6; $i >= 0; $i--) {
+            $chartDates->push(Carbon::now()->subDays($i)->toDateString());
+        }
+
+        $salesSeries = $chartDates->map(fn ($date) => (float) ($salesLast7Days->get($date)?->amount ?? 0));
+        $salesCountSeries = $chartDates->map(fn ($date) => (int) ($salesLast7Days->get($date)?->count ?? 0));
+
+        $salesByCategory = Product::query()
+            ->with('category')
+            ->selectRaw('category_id, COUNT(*) as total')
+            ->whereNotNull('category_id')
+            ->groupBy('category_id')
+            ->orderByDesc('total')
+            ->limit(6)
+            ->get()
+            ->map(fn ($item) => [
+                'label' => $item->category?->nombre ?? 'Sin categoria',
+                'value' => (int) $item->total,
+            ]);
+
+        $topSellingProducts = Movement::query()
+            ->with('product')
+            ->where('tipo', 'venta')
+            ->select('product_id', DB::raw('SUM(cantidad) as total_quantity'))
+            ->groupBy('product_id')
+            ->orderByDesc('total_quantity')
+            ->limit(5)
+            ->get()
+            ->map(fn ($item) => [
+                'label' => $item->product?->nombre ?? 'Producto eliminado',
+                'value' => (int) $item->total_quantity,
+            ]);
 
         return view('home', [
             'stats' => [
@@ -52,6 +97,11 @@ class HomeController extends Controller
                 ->limit(5)
                 ->get(),
             'recentWorkshopOrders' => WorkshopOrder::with(['customer', 'technician'])->latest()->limit(5)->get(),
+            'chartLabels' => $chartDates->map(fn ($date) => Carbon::parse($date)->format('d/m'))->values(),
+            'salesSeries' => $salesSeries->values(),
+            'salesCountSeries' => $salesCountSeries->values(),
+            'salesByCategory' => $salesByCategory,
+            'topSellingProducts' => $topSellingProducts,
         ]);
     }
 }

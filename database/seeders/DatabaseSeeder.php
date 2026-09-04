@@ -63,7 +63,7 @@ class DatabaseSeeder extends Seeder
                     'catalog.view', 'products.create', 'products.manage', 'warehouse.manage',
                     'customers.manage', 'sales.manage', 'cash.manage', 'purchases.manage', 'quotes.manage',
                     'technicians.manage', 'workshop.manage', 'layaways.manage', 'kardex.manage', 'receipts.manage',
-                    'inventory.entries.manage',
+                    'inventory.entries.manage', 'reports.manage', 'settings.manage',
                 ],
             ],
             'vendedor-cajero' => [

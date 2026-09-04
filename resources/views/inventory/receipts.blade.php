@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Comprobantes | Sistema de Inventario')
+@section('title', 'Comprobantes | SmartZone')
 @section('page-title', 'Comprobantes')
 @section('page-subtitle', 'Tipos de comprobante y tiraje/correlativo por tipo')
 

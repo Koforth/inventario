@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Generar cotizacion | Sistema de Inventario')
+@section('title', 'Generar cotizacion | SmartZone')
 @section('page-title', 'Generar cotizacion')
 @section('page-subtitle', 'Selecciona productos y calcula el total')
 

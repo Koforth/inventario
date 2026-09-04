@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Kardex | Sistema de Inventario')
+@section('title', 'Kardex | SmartZone')
 @section('page-title', 'Kardex')
 @section('page-subtitle', 'Resumen de saldos y movimientos con entradas y salidas de almacen')
 

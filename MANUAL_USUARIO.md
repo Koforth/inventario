@@ -14,6 +14,10 @@ Si no tienes acceso a un modulo, significa que tu rol no tiene permiso para esa 
 ## 2) Pantalla principal
 
 - Usuarios operativos ven un **dashboard** con resumen del dia.
+- El dashboard incluye **3 graficos** basados en la base de datos:
+  - Ventas de los ultimos 7 dias (grafico de lineas).
+  - Productos por categoria (grafico de dona).
+  - Top 5 productos mas vendidos (grafico de barras).
 - Usuarios con rol **Invitado** ven una pantalla de bienvenida con informacion general.
 - El menu lateral muestra solo modulos permitidos para tu rol.
 
@@ -74,6 +78,19 @@ En el mismo modulo de ventas se puede consultar:
 - ventas del dia,
 - ventas por rango de fechas,
 - ventas por mes.
+
+### Imprimir factura
+
+- Cada venta registrada (recientes o consulta) tiene un boton de **impresion** (icono de impresora).
+- Al presionarlo se abre la factura en formato termico (ticket 80 mm) con:
+
+  - datos de la tienda,
+  - comprobante (numero correlativo),
+  - cliente,
+  - detalle de items,
+  - totales y forma de pago.
+
+- Dentro de la vista de impresion use **Imprimir** del navegador para enviar a la impresora.
 
 ## 7) Apartados
 
@@ -208,18 +225,33 @@ Permite crear ordenes con:
 
 Ruta: **Reportes**
 
-Incluye:
+El modulo tiene pestanas de navegacion con los siguientes reportes:
 
-- movimientos de inventario (cualquier tipo de movimiento registrado),
-- ventas,
-- entradas,
-- mermas y traslados,
-- valor de inventario,
-- filtros por fecha y tipo.
+1. **Movimientos** (pestana principal):
+   - movimientos de inventario (cualquier tipo de movimiento registrado),
+   - ventas,
+   - entradas,
+   - mermas y traslados,
+   - bajo stock,
+   - valor de inventario,
+   - filtros por fecha y tipo.
+
+2. **Ventas** (por periodo): ventas con su detalle (maestro-detalle) por rango de fechas.
+
+3. **Compras** (por periodo): compras con su detalle (maestro-detalle) por rango de fechas.
+
+4. **Morosos**: clientes con saldo pendiente al credito.
+
+5. **Catalogo**: listado maestro-detalle de productos con precios.
+
+### Exportar a Excel
+
+- Todos los reportes tienen un boton **Exportar a Excel**.
+- Se descarga un archivo `.xls` con los mismos datos del reporte filtrado.
 
 Acceso:
 
-- Este modulo esta restringido para perfiles autorizados por administracion (actualmente super-admin).
+- Este modulo esta restringido para perfiles autorizados por administracion (actualmente super-admin y roles con permiso `reports.manage`).
 
 ## 15) Roles de uso (resumen)
 
@@ -258,3 +290,57 @@ En crear/editar usuario, los roles se muestran en bloques colapsables para facil
 - Roles con mas de un permiso
 - Roles con un solo permiso
 - Cada card se puede expandir/contraer con icono `plus/minus`.
+
+## 19) Modulo de roles
+
+Ruta: **Roles** (en el menu Administracion).
+
+Permite al administrador crear, editar y eliminar roles, y **asignar o revocar permisos** directamente.
+
+### Crear o editar un rol
+
+1. Presionar **Crear rol** o **Editar permisos** en un rol existente.
+2. Ingresar el nombre del rol y el identificador (solo minusculas, numeros y guiones).
+3. Marcar los permisos deseados en las cards colapsables:
+   - **Permisos por modulo** (gestion de productos, almacen, ventas, caja, etc.).
+   - **Permisos especiales** (ver catalogo, crear productos, gestionar roles/settings, eliminar registros).
+4. Guardar. Los permisos del rol se aplican de inmediato a los usuarios que lo tengan asignado.
+
+### Eliminar rol
+
+- Un rol **no se puede eliminar** si tiene usuarios asignados.
+- El rol **Super Admin** no se puede eliminar, y sus permisos solo los puede modificar un usuario con permiso `roles.manage`.
+
+## 20) Respaldo y restauracion de la base de datos
+
+Ruta: **Backup y Restauracion** (en el menu Administracion).
+
+Permite respaldar y recuperar la base de datos desde el sistema.
+
+### Crear respaldo
+
+1. Ir a **Backup y Restauracion**.
+2. Presionar **Generar backup**.
+3. El sistema crea un archivo `.sql` con toda la base de datos.
+
+### Descargar / eliminar respaldo
+
+- En la lista de backups, usar los botones:
+  - **Descargar** para guardar la copia en la computadora.
+  - **Eliminar** para borrar el archivo del servidor.
+
+### Restaurar
+
+Hay dos formas:
+
+1. **Subir archivo**: seleccionar un archivo `.sql` de la computadora y presionar restaurar.
+2. **Desde el servidor**: presionar **Restaurar** junto a un backup existente.
+
+Advertencia:
+
+- **Restaurar reemplaza todos los datos actuales** con los datos del backup. Se recomienda generar un backup antes de restaurar.
+
+## 21) Requerimientos y documentacion tecnica
+
+- El analisis completo (requerimientos funcionales y no funcionales) esta en el documento `docs/REQUERIMIENTOS.md`.
+- El sistema expone toda su funcionalidad mediante **APIs REST** protegidas con tokens (para integraciones de terceros o aplicaciones moviles).

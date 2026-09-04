@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\Movement;
 use App\Models\Product;
+use App\Models\Purchase;
+use App\Models\Sale;
+use App\Models\Supplier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -162,5 +166,220 @@ class ReportController extends Controller
                         ->orWhereHas('user', fn ($query) => $query->where('name', 'like', "%{$search}%"));
                 });
             });
+    }
+
+    public function salesReport(Request $request): View
+    {
+        $params = $this->parseRange($request);
+
+        $salesQuery = Sale::query()->with(['customer', 'user', 'items.product', 'receiptType']);
+
+        $salesQuery = $this->applyRange($salesQuery, 'sales.created_at', $params['from'], $params['to'])
+            ->when($request->query('sale_type') && $request->query('sale_type') !== 'all',
+                fn ($q) => $q->where('sale_type', $request->query('sale_type')));
+
+        $sales = (clone $salesQuery)->latest()->paginate(15)->withQueryString();
+
+        $totals = (clone $salesQuery)->toBase()->selectRaw('
+            COUNT(*) as count,
+            COALESCE(SUM(total), 0) as total,
+            COALESCE(SUM(discount_total), 0) as discounts,
+            COALESCE(SUM(credit_balance), 0) as credit_pending
+        ')->first();
+
+        return view('reports.sales', [
+            'sales' => $sales,
+            'totals' => $totals,
+            'saleType' => in_array((string) $request->query('sale_type', 'all'), ['contado', 'credito'], true) ? $request->query('sale_type') : 'all',
+            'from' => $params['from']->format('Y-m-d'),
+            'to' => $params['to']->format('Y-m-d'),
+        ]);
+    }
+
+    public function exportSales(Request $request): StreamedResponse
+    {
+        $params = $this->parseRange($request);
+
+        $sales = Sale::query()
+            ->with(['customer', 'user', 'items.product'])
+            ->whereBetween('created_at', [$params['from'], $params['to']])
+            ->oldest()
+            ->get();
+
+        return response()->streamDownload(function () use ($sales, $params) {
+            echo view('reports.export-sales', [
+                'sales' => $sales,
+                'from' => $params['from'],
+                'to' => $params['to'],
+                'generatedAt' => now(),
+            ])->render();
+        }, 'reporte-ventas-' . now()->format('Y-m-d-His') . '.xls', [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+        ]);
+    }
+
+    public function purchasesReport(Request $request): View
+    {
+        $params = $this->parseRange($request);
+
+        $purchasesQuery = Purchase::query()->with(['supplier', 'user', 'items.product']);
+
+        $purchasesQuery = $this->applyRange($purchasesQuery, 'purchases.created_at', $params['from'], $params['to'])
+            ->when($request->query('supplier_id') && $request->query('supplier_id') !== 'all',
+                fn ($q) => $q->where('supplier_id', $request->query('supplier_id')));
+
+        $purchases = (clone $purchasesQuery)->latest()->paginate(15)->withQueryString();
+
+        $totals = (clone $purchasesQuery)->toBase()->selectRaw('
+            COUNT(*) as count,
+            COALESCE(SUM(total), 0) as total
+        ')->first();
+
+        return view('reports.purchases', [
+            'purchases' => $purchases,
+            'totals' => $totals,
+            'suppliers' => Supplier::orderBy('name')->get(),
+            'supplierId' => (string) $request->query('supplier_id', 'all'),
+            'from' => $params['from']->format('Y-m-d'),
+            'to' => $params['to']->format('Y-m-d'),
+        ]);
+    }
+
+    public function exportPurchases(Request $request): StreamedResponse
+    {
+        $params = $this->parseRange($request);
+
+        $purchases = Purchase::query()
+            ->with(['supplier', 'user'])
+            ->whereBetween('created_at', [$params['from'], $params['to']])
+            ->oldest()
+            ->get();
+
+        return response()->streamDownload(function () use ($purchases, $params) {
+            echo view('reports.export-purchases', [
+                'purchases' => $purchases,
+                'from' => $params['from'],
+                'to' => $params['to'],
+                'generatedAt' => now(),
+            ])->render();
+        }, 'reporte-compras-' . now()->format('Y-m-d-His') . '.xls', [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+        ]);
+    }
+
+    public function debtorsReport(Request $request): View
+    {
+        $search = trim((string) $request->query('search', ''));
+
+        $debtors = Customer::query()
+            ->where('is_active', true)
+            ->when($search !== '', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('dni', 'like', "%{$search}%")
+                    ->orWhere('ruc', 'like', "%{$search}%");
+            }))
+            ->get()
+            ->map(function ($customer) {
+                $balance = (float) Sale::where('customer_id', $customer->id)
+                    ->where('sale_type', 'credito')
+                    ->sum('credit_balance');
+
+                return ['customer' => $customer, 'balance' => $balance];
+            })
+            ->filter(fn ($item) => $item['balance'] > 0)
+            ->sortByDesc('balance')
+            ->values();
+
+        return view('reports.debtors', [
+            'debtors' => $debtors,
+            'totalPending' => round((float) $debtors->sum('balance'), 2),
+            'search' => $search,
+        ]);
+    }
+
+    public function exportDebtors(): StreamedResponse
+    {
+        $debtors = Customer::query()
+            ->where('is_active', true)
+            ->get()
+            ->map(function ($customer) {
+                $balance = (float) Sale::where('customer_id', $customer->id)
+                    ->where('sale_type', 'credito')
+                    ->sum('credit_balance');
+
+                return ['customer' => $customer, 'balance' => $balance];
+            })
+            ->filter(fn ($item) => $item['balance'] > 0)
+            ->sortByDesc('balance')
+            ->values();
+
+        return response()->streamDownload(function () use ($debtors) {
+            echo view('reports.export-debtors', [
+                'debtors' => $debtors,
+                'generatedAt' => now(),
+            ])->render();
+        }, 'reporte-morosos-' . now()->format('Y-m-d-His') . '.xls', [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+        ]);
+    }
+
+    public function catalogReport(Request $request): View
+    {
+        $search = trim((string) $request->query('search', ''));
+
+        $products = Product::query()
+            ->with(['category', 'brand', 'presentation', 'suppliers', 'prices'])
+            ->when($search !== '', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('nombre', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('barcode', 'like', "%{$search}%");
+            }))
+            ->orderBy('nombre')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('reports.catalog', [
+            'products' => $products,
+            'search' => $search,
+            'stats' => [
+                'total' => Product::count(),
+                'inventory_value' => (float) Product::selectRaw('COALESCE(SUM(stock * purchase_price), 0) as total')->value('total'),
+                'categories' => \App\Models\Category::count(),
+            ],
+        ]);
+    }
+
+    public function exportCatalog(): StreamedResponse
+    {
+        $products = Product::query()
+            ->with(['category', 'brand', 'presentation', 'suppliers'])
+            ->orderBy('nombre')
+            ->get();
+
+        return response()->streamDownload(function () use ($products) {
+            echo view('reports.export-catalog', [
+                'products' => $products,
+                'generatedAt' => now(),
+            ])->render();
+        }, 'reporte-catalogo-' . now()->format('Y-m-d-His') . '.xls', [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+        ]);
+    }
+
+    private function parseRange(Request $request): array
+    {
+        $from = \Illuminate\Support\Carbon::parse((string) $request->query('from', now()->startOfMonth()->toDateString()))->startOfDay();
+        $to = \Illuminate\Support\Carbon::parse((string) $request->query('to', now()->toDateString()))->endOfDay();
+
+        if ($from->gt($to)) {
+            [$from, $to] = [$to, $from];
+        }
+
+        return ['from' => $from, 'to' => $to];
+    }
+
+    private function applyRange(Builder $query, string $column, \Carbon\CarbonInterface $from, \Carbon\CarbonInterface $to): Builder
+    {
+        return $query->whereBetween($column, [$from, $to]);
     }
 }

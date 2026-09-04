@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Caja | Sistema de Inventario')
+@section('title', 'Caja | SmartZone')
 @section('page-title', 'Caja')
 @section('page-subtitle', 'Apertura, cierre y estadisticas del dia')
 

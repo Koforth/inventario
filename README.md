@@ -46,6 +46,8 @@ El sistema permite:
 - Vite
 - Bootstrap 5
 - Bootstrap Icons
+- Chart.js (graficos del dashboard)
+- Laravel Sanctum (tokens de API)
 - Spatie Laravel Permission (instalado)
 
 ## Instalacion
@@ -436,16 +438,60 @@ Incluye:
 ### Reportes
 
 - Ruta: `/reports`
-- Incluye:
-  - movimientos (cualquier tipo registrado en base de datos)
-  - ventas
-  - entradas
-  - mermas
-  - traslados
-  - bajo stock
+- Incluye (8 reportes):
+  - **Movimientos** (cualquier tipo registrado en base de datos) - `/reports`
+  - **Ventas por periodo** (maestro-detalle) - `/reports/sales`
+  - **Compras por periodo** (maestro-detalle) - `/reports/purchases`
+  - **Clientes morosos** (saldo al credito) - `/reports/debtors`
+  - **Catalogo maestro-detalle** - `/reports/catalog`
+  - entradas, mermas, traslados y bajo stock dentro de movimientos
   - valor inventario
-- Exportacion disponible.
+- Exportacion a Excel disponible en todos los reportes.
 - Acceso restringido por permiso `reports.manage` (operativamente asignado a `super-admin`).
+
+### Factura imprimible
+
+- Cada venta registrada tiene un boton de impresion (<i class="bi bi-printer"></i>) en las tablas de ventas recientes y consulta detallada.
+- La factura/boleta/ticket se genera en formato termico 80mm (`/sales/{sale}/print`).
+- Incluye datos de la tienda, comprobante, cliente, items, totales y formas de pago.
+
+### Backup y restauracion
+
+- Ruta: `/backup` (permiso `settings.manage`, rol `administrador`/`super-admin`).
+- Genera copias de seguridad `.sql` completas de la base de datos.
+- Permite descargar, restaurar (archivo subido o backup del servidor) y eliminar backups.
+- Almacenamiento en `storage/app/backups`.
+- Fallback con dump via PHP si `mysqldump` no esta disponible.
+
+### API REST
+
+- Prefijo base: `/api/v1` (autenticacion con tokens Laravel Sanctum).
+- Endpoints principales:
+  - `POST /api/v1/login` - obtener token
+  - `GET /api/v1/dashboard` - estadisticas y graficos
+  - CRUD de productos, categorias, marcas, presentaciones, clientes, proveedores
+  - Ventas, compras, caja, apartados, inventario, kardex
+  - Reportes parametrizados y backup/restauracion
+- Todo endpoint protegido requiere header `Authorization: Bearer <token>` excepto login.
+- Las rutas respetan los permisos RBAC del usuario mediante gate `can:`.
+
+### Graficos del dashboard
+
+- El dashboard (`/home`) ahora muestra 3 graficos con Chart.js:
+  - Ventas de los ultimos 7 dias (lineas)
+  - Productos por categoria (dona)
+  - Top 5 mas vendidos (barras)
+- Los datos se cargan desde la base de datos en `HomeController` y via API en `Api\DashboardController`.
+
+### Pruebas automatizadas
+
+- `tests/Feature/ApiFeatureTest.php`: login API, tokens, CRUD de categorias, reportes y backup por API.
+- `tests/Feature/BackupAndDashboardTest.php`: renderizado de dashboard, backup y reportes web.
+- Ejecutar con `php artisan test`.
+
+### Requerimientos
+
+- Documento de analisis completo en `docs/REQUERIMIENTOS.md` con 19 funcionalidades y 10 requerimientos no funcionales.
 
 ### Usuarios
 
@@ -458,6 +504,17 @@ Incluye:
   - Roles con mas de un permiso
   - Roles con un solo permiso
 - Las cards usan icono colapsable tipo `plus/minus`.
+
+### Roles
+
+- Ruta: `/roles` (permiso `roles.manage`, solo `super-admin` por defecto).
+- Gestion directa de roles: crear, editar y eliminar.
+- Al crear/editar un rol se asignan, modifican o revocan sus permisos mediante checkboxes agrupados:
+  - Permisos por modulo (una card por gestion de cada modulo)
+  - Permisos especiales (ver catalogo, crear productos, roles sensibles, settings, eliminar registros)
+- Validaciones: identificador `name` unico en minusculas/numeros/guiones, label requerido, permisos existentes en BD.
+- Protecciones: el rol `super-admin` no puede eliminarse, y no se eliminan roles con usuarios asignados.
+- Solo un usuario con permiso `roles.manage` puede modificar los permisos del rol protegido `super-admin`.
 
 ## Comprobantes y correlativos
 

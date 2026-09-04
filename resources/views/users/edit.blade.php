@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Editar roles | Sistema de Inventario')
+@section('title', 'Editar roles | SmartZone')
 @section('page-title', 'Cambiar roles')
 @section('page-subtitle', $user->name)
 

@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Crear usuario | Sistema de Inventario')
+@section('title', 'Crear usuario | SmartZone')
 @section('page-title', 'Crear usuario')
 @section('page-subtitle', 'Alta interna de usuarios del sistema')
 

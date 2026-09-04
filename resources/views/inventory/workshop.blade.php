@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Ordenes de Taller | Sistema de Inventario')
+@section('title', 'Ordenes de Taller | SmartZone')
 @section('page-title', 'Orden de Taller')
 @section('page-subtitle', 'Registro y seguimiento de servicios de reparacion y mantenimiento')
 

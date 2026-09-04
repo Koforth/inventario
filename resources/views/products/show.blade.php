@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', $product->nombre . ' | Sistema de Inventario')
+@section('title', $product->nombre . ' | SmartZone')
 @section('page-title', $product->nombre)
 @section('page-subtitle', 'Detalle del producto')
 

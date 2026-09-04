@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Ventas | Sistema de Inventario')
+@section('title', 'Ventas | SmartZone')
 @section('page-title', 'Ventas')
 @section('page-subtitle', 'Venta rapida por codigo o nombre con multiples precios y descuentos')
 
@@ -156,7 +156,7 @@
         <div class="border-bottom p-3 p-md-4"><h2 class="h5 mb-1">Ventas recientes</h2></div>
         <div class="table-responsive">
             <table class="table table-hover mb-0">
-                <thead class="table-light"><tr><th>Nro</th><th>Cliente</th><th>Tipo</th><th>Comprobante</th><th class="text-end">Total</th><th>Fecha</th></tr></thead>
+                <thead class="table-light"><tr><th>Nro</th><th>Cliente</th><th>Tipo</th><th>Comprobante</th><th class="text-end">Total</th><th>Fecha</th><th class="text-end">Imp</th></tr></thead>
                 <tbody>
                     @forelse ($recentSales as $sale)
                         <tr>
@@ -166,9 +166,14 @@
                             <td>{{ $sale->receipt_number ?: ucfirst($sale->receipt_type) }}</td>
                             <td class="text-end">C$ {{ number_format((float) $sale->total, 2) }}</td>
                             <td>{{ $sale->created_at->format('d/m/Y h:i A') }}</td>
+                            <td class="text-end">
+                                <a href="{{ route('sales.print', $sale) }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Imprimir comprobante">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="py-4 text-center text-muted">Aun no hay ventas registradas.</td></tr>
+                        <tr><td colspan="7" class="py-4 text-center text-muted">Aun no hay ventas registradas.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -219,6 +224,7 @@
                         <th>Detalle</th>
                         <th>Pago</th>
                         <th class="text-end">Total</th>
+                        <th class="text-end">Imp</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -237,9 +243,14 @@
                                 <div class="text-muted">{{ $sale->receipt_number ?: ucfirst($sale->receipt_type) }}</div>
                             </td>
                             <td class="text-end fw-bold">C$ {{ number_format((float) $sale->total, 2) }}</td>
+                            <td class="text-end">
+                                <a href="{{ route('sales.print', $sale) }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Imprimir comprobante">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="py-4 text-center text-muted">No hay ventas para el filtro seleccionado.</td></tr>
+                        <tr><td colspan="7" class="py-4 text-center text-muted">No hay ventas para el filtro seleccionado.</td></tr>
                     @endforelse
                 </tbody>
             </table>

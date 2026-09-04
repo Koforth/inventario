@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Entradas | Sistema de Inventario')
+@section('title', 'Entradas | SmartZone')
 @section('page-title', 'Entradas de inventario')
 @section('page-subtitle', 'Registrar productos que ingresan al stock')
 
