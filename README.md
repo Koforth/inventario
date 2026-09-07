@@ -1,6 +1,6 @@
 # Manual Completo - Sistema de Inventario de una tienda de telefonos
 
-Sistema web en Laravel para gestion comercial y operativa: catalogo, inventario, ventas, caja, compras, clientes, cotizaciones, apartados, credito, comprobantes, taller y reportes.
+Sistema web en Laravel para gestion comercial y operativa: catalogo, inventario, ventas, caja, compras, clientes, cotizaciones, apartados, creditos, comprobantes, taller y reportes.
 
 ## Tabla de contenido
 
