@@ -1,4 +1,4 @@
-# Manual Completo - Sistema de Inventario
+# Manual Completo - Sistema de Inventario de una tienda de telefonos
 
 Sistema web en Laravel para gestion comercial y operativa: catalogo, inventario, ventas, caja, compras, clientes, cotizaciones, apartados, credito, comprobantes, taller y reportes.
 
@@ -6,19 +6,20 @@ Sistema web en Laravel para gestion comercial y operativa: catalogo, inventario,
 
 1. [Resumen general](#resumen-general)
 2. [Tecnologias](#tecnologias)
-3. [Instalacion](#instalacion)
-4. [Ejecucion](#ejecucion)
-5. [Arquitectura de seguridad y acceso](#arquitectura-de-seguridad-y-acceso)
-6. [Roles y permisos implementados](#roles-y-permisos-implementados)
-7. [Modulo por modulo](#modulo-por-modulo)
-8. [Comprobantes y correlativos](#comprobantes-y-correlativos)
-9. [Mapa tecnico de rutas y middleware](#mapa-tecnico-de-rutas-y-middleware)
-10. [Estado actual de RBAC](#estado-actual-de-rbac)
-11. [Dashboard](#dashboard)
-12. [Base de datos](#base-de-datos)
-13. [Flujos operativos recomendados](#flujos-operativos-recomendados)
-14. [Comandos utiles](#comandos-utiles)
-15. [Notas operativas y soporte](#notas-operativas-y-soporte)
+3. [Estructura del proyecto](#estructura-del-proyecto)
+4. [Instalacion](#instalacion)
+5. [Ejecucion](#ejecucion)
+6. [Arquitectura de seguridad y acceso](#arquitectura-de-seguridad-y-acceso)
+7. [Roles y permisos implementados](#roles-y-permisos-implementados)
+8. [Modulo por modulo](#modulo-por-modulo)
+9. [Comprobantes y correlativos](#comprobantes-y-correlativos)
+10. [Mapa tecnico de rutas y middleware](#mapa-tecnico-de-rutas-y-middleware)
+11. [Estado actual de RBAC](#estado-actual-de-rbac)
+12. [Dashboard](#dashboard)
+13. [Base de datos](#base-de-datos)
+14. [Flujos operativos recomendados](#flujos-operativos-recomendados)
+15. [Comandos utiles](#comandos-utiles)
+16. [Notas operativas y soporte](#notas-operativas-y-soporte)
 
 ## Resumen general
 
@@ -39,21 +40,117 @@ El sistema permite:
 ## Tecnologias
 
 - PHP 8.3+
-- Laravel 13
+- Laravel 13 (framework 13.6)
 - MySQL/MariaDB
 - Composer
 - Node.js + npm
-- Vite
-- Bootstrap 5
-- Bootstrap Icons
-- Chart.js (graficos del dashboard)
-- Laravel Sanctum (tokens de API)
-- Spatie Laravel Permission (instalado)
+- Vite 8 + Tailwind CSS 4
+- Bootstrap 5.3.3 + Bootstrap Icons 1.11.3 (CDN)
+- Font Awesome 6.5.2 (CDN)
+- Chart.js 4.4.4 (graficos del dashboard)
+- Laravel Sanctum 4.3 (tokens de API)
+- Spatie Laravel Permission 7.4 (instalado, no usado)
+
+## Estructura del proyecto
+
+Arbol de directorios principal:
+
+```text
+inventario/
+├── app/
+│   ├── Http/
+│   │   └── Controllers/
+│   │       ├── Controller.php              # controlador base
+│   │       ├── AuthController.php          # login/logout web
+│   │       ├── HomeController.php          # dashboard (KPIs + graficos Chart.js)
+│   │       ├── ProductController.php       # catalogo y CRUD de productos
+│   │       ├── CategoryController.php      # categorias del almacen
+│   │       ├── BrandController.php         # marcas
+│   │       ├── PresentationController.php  # presentaciones
+│   │       ├── WarehouseController.php     # almacen y perecederos
+│   │       ├── InventoryController.php     # entradas y ventas
+│   │       ├── KardexController.php        # kardex y movimientos
+│   │       ├── SaleController.php          # impresion de venta (termica 80mm)
+│   │       ├── LayawayController.php       # apartados y creditos
+│   │       ├── CustomerController.php      # clientes
+│   │       ├── QuoteController.php         # cotizaciones
+│   │       ├── PurchaseController.php      # compras, creditos, historial de precios
+│   │       ├── SupplierController.php      # proveedores
+│   │       ├── CashRegisterController.php  # caja (apertura/cierre/movimientos)
+│   │       ├── ReceiptTypeController.php   # comprobantes y correlativos
+│   │       ├── TechnicianController.php    # tecnicos
+│   │       ├── WorkshopController.php      # taller (ordenes de servicio)
+│   │       ├── ReportController.php        # reportes y exportacion XLS
+│   │       ├── UserManagementController.php
+│   │       ├── RoleManagementController.php
+│   │       ├── BackupController.php        # backup/restauracion de BD
+│   │       └── Api/                        # API REST v1 (12 controladores)
+│   │           ├── AuthController.php      # login/logout/me
+│   │           ├── DashboardController.php
+│   │           ├── ProductController.php
+│   │           ├── CatalogController.php   # categorias, marcas, presentaciones, clientes, proveedores
+│   │           ├── SaleController.php
+│   │           ├── InventoryController.php # entries, kardex, stock
+│   │           ├── PurchaseController.php
+│   │           ├── LayawayController.php
+│   │           ├── CashController.php
+│   │           ├── ReportController.php    # 7 reportes
+│   │           ├── UserController.php
+│   │           └── BackupController.php
+│   ├── Models/                             # 31 modelos Eloquent
+│   │   ├── User.php                        # roles, sales; helpers hasPermission/hasRole
+│   │   ├── Role.php / Permission.php       # RBAC propio
+│   │   ├── Product.php                     # precio, imagenes, movimientos, proveedores
+│   │   └── resto: catalogo, inventario, ventas, apartados, compras, caja, cotizaciones, taller
+│   └── Providers/
+│       └── AppServiceProvider.php          # Gates RBAC + bypass super-admin
+├── bootstrap/
+│   ├── app.php                             # configuracion de la app, statefulApi (Sanctum SPA)
+│   └── providers.php
+├── config/                                 # 10 archivos de configuracion estandar
+├── database/
+│   ├── factories/UserFactory.php
+│   ├── migrations/                         # 26 migraciones (~30 tablas)
+│   └── seeders/DatabaseSeeder.php          # 20 permisos, 8 roles, admin, datos base
+├── docs/
+│   └── REQUERIMIENTOS.md                   # analisis RF/RNF completo
+├── public/
+│   ├── index.php
+│   ├── .htaccess
+│   ├── favicon.svg
+│   └── robots.txt
+├── resources/
+│   ├── css/app.css                         # Tailwind CSS 4 (@import)
+│   ├── js/app.js                           # utilidades frontend (confirmar delete, SKU)
+│   └── views/                              # 58 vistas Blade por modulo
+│       ├── layout.blade.php                # layout principal (Bootstrap 5 + sidebar RBAC)
+│       ├── layouts/app.blade.php           # layout secundario (Tailwind 4)
+│       ├── auth/, products/, warehouse/, inventory/, sales/, customers/
+│       ├── purchases/, quotes/, cash/, reports/, users/, roles/, backup/
+│       └── home.blade.php, home-invite.blade.php, welcome.blade.php
+├── routes/
+│   ├── web.php                             # rutas web (grupos auth + can:<permiso>)
+│   ├── api.php                             # API v1 (Sanctum)
+│   └── console.php
+├── storage/app/backups/                    # backups de BD generados
+└── tests/
+    ├── TestCase.php
+    ├── Feature/                            # ApiFeatureTest, BackupAndDashboardTest,
+    │                                       # RoleManagementTest, ExampleTest
+    └── Unit/ExampleTest.php
+```
+
+Notas de arquitectura:
+
+- El RBAC es **propio** (modelos `Role`/`Permission` + gates definidos en `AppServiceProvider`). El paquete `spatie/laravel-permission` esta instalado en `composer.json` pero **no se usa** en controladores ni modelos.
+- No existen FormRequests ni middleware propios: toda la validacion es inline con `$request->validate()` y la autorizacion se hace con middleware `can:<permiso>` + `Gate::before` (bypass para `super-admin`).
+- Doble frontend: el layout principal usa Bootstrap 5 via CDN; Vite/Tailwind 4 se usa en `resources/css/app.css` y el layout secundario.
+- El `.htaccess` raiz redirige `/inventario` a `/inventario/public/` (despliegue WAMP en subcarpeta).
 
 ## Instalacion
 
 ```bash
-cd c:\laragon\www\inventario
+cd c:\wamp64\www\inventario
 composer install
 npm install
 copy .env.example .env
@@ -62,6 +159,15 @@ php artisan migrate
 php artisan db:seed
 php artisan storage:link
 ```
+
+Instalacion rapida con el script de Composer:
+
+```bash
+cd c:\wamp64\www\inventario
+composer setup
+```
+
+El script `composer setup` instala dependencias, crea `.env` desde `.env.example` si no existe, genera la `APP_KEY`, ejecuta las migraciones, instala npm y compila los assets.
 
 Configurar `.env`:
 
@@ -98,6 +204,14 @@ npm.cmd run dev
 ```
 
 En PowerShell puede requerirse `npm.cmd` para evitar bloqueo de `npm.ps1`.
+
+Script combinado `composer dev` (servidor + cola + logs + Vite):
+
+```bash
+composer dev
+```
+
+Despliegue con WAMP (Laravel en subcarpeta): el acceso es via `http://localhost/inventario/public/`; el `.htaccess` raiz ya redirige `/inventario` a `/inventario/public/`.
 
 ## Arquitectura de seguridad y acceso
 
@@ -437,16 +551,15 @@ Incluye:
 
 ### Reportes
 
-- Ruta: `/reports`
-- Incluye (8 reportes):
-  - **Movimientos** (cualquier tipo registrado en base de datos) - `/reports`
+- Ruta: `/reports`, todas bajo permiso `reports.manage`.
+- Incluye (5 reportes web + exportacion XLS):
+  - **Movimientos** (entradas, mermas, traslados, bajo stock y valor de inventario) - `/reports`
   - **Ventas por periodo** (maestro-detalle) - `/reports/sales`
   - **Compras por periodo** (maestro-detalle) - `/reports/purchases`
   - **Clientes morosos** (saldo al credito) - `/reports/debtors`
   - **Catalogo maestro-detalle** - `/reports/catalog`
-  - entradas, mermas, traslados y bajo stock dentro de movimientos
-  - valor inventario
-- Exportacion a Excel disponible en todos los reportes.
+- Exportacion a Excel disponible en todos los reportes: `/reports/export`, `/reports/sales/export`, `/reports/purchases/export`, `/reports/debtors/export`, `/reports/catalog/export`.
+- Via API se agregan `reports/low-stock` y `reports/top-selling`.
 - Acceso restringido por permiso `reports.manage` (operativamente asignado a `super-admin`).
 
 ### Factura imprimible
@@ -465,15 +578,28 @@ Incluye:
 
 ### API REST
 
-- Prefijo base: `/api/v1` (autenticacion con tokens Laravel Sanctum).
-- Endpoints principales:
-  - `POST /api/v1/login` - obtener token
-  - `GET /api/v1/dashboard` - estadisticas y graficos
-  - CRUD de productos, categorias, marcas, presentaciones, clientes, proveedores
-  - Ventas, compras, caja, apartados, inventario, kardex
-  - Reportes parametrizados y backup/restauracion
+- Prefijo base: `/api/v1`, autenticacion con Laravel Sanctum (SPA stateful + tokens `Bearer`).
+- Implementacion: 12 controladores en `app/Http/Controllers/Api/`.
+- Autenticacion:
+  - `POST /api/v1/login` - obtener token (publico)
+  - `POST /api/v1/logout` - invalidar sesion/token
+  - `GET /api/v1/me` - datos del usuario autenticado
+- Dashboard: `GET /api/v1/dashboard` - estadisticas y graficos.
+- Productos: `GET/POST /api/v1/products`, `GET/PUT/DELETE /api/v1/products/{product}` (crear exige `products.create`, editar `products.manage`, eliminar `records.delete`).
+- Catalogos:
+  - Categorias, marcas y presentaciones: `GET/POST/PUT/DELETE` (escritura con `warehouse.manage`, borrado con `records.delete`).
+  - Clientes: `GET/POST/PUT /api/v1/customers`.
+  - Proveedores: `GET/POST/PUT/DELETE /api/v1/suppliers`.
+- Ventas: `GET/POST /api/v1/sales`, `GET /api/v1/sales/{sale}`, `POST /api/v1/sales/{sale}/payments` (abonos al credito).
+- Inventario: `GET/POST /api/v1/inventory/entries`, `GET /api/v1/inventory/kardex`, `GET /api/v1/inventory/stock`.
+- Compras: `GET/POST /api/v1/purchases`, `GET /api/v1/purchases/{purchase}`.
+- Apartados: `GET/POST /api/v1/layaways`, `POST /api/v1/layaways/{layaway}/payments`, `POST /api/v1/layaways/{layaway}/complete`.
+- Caja: `GET /api/v1/cash`, `POST /api/v1/cash/open`, `PUT /api/v1/cash/{cashRegister}/close`, `POST /api/v1/cash/{cashRegister}/movements`.
+- Reportes (7): `GET /api/v1/reports/movements|sales|purchases|debtors|catalog|low-stock|top-selling`.
+- Usuarios: `GET/POST /api/v1/users`, `PUT /api/v1/users/{user}`.
+- Backup: `POST /api/v1/backup/create`, `GET /api/v1/backup/status`, `GET /api/v1/backup/{file}/download`, `POST /api/v1/backup/{file}/restore`, `DELETE /api/v1/backup/{file}`.
 - Todo endpoint protegido requiere header `Authorization: Bearer <token>` excepto login.
-- Las rutas respetan los permisos RBAC del usuario mediante gate `can:`.
+- Las rutas respetan los permisos RBAC del usuario mediante middleware `can:<permiso>`.
 
 ### Graficos del dashboard
 
@@ -485,9 +611,12 @@ Incluye:
 
 ### Pruebas automatizadas
 
-- `tests/Feature/ApiFeatureTest.php`: login API, tokens, CRUD de categorias, reportes y backup por API.
+- `tests/Feature/ApiFeatureTest.php`: login API, tokens/credenciales, CRUD de categorias, dashboard, reportes y backup por API.
 - `tests/Feature/BackupAndDashboardTest.php`: renderizado de dashboard, backup y reportes web.
-- Ejecutar con `php artisan test`.
+- `tests/Feature/RoleManagementTest.php` (8 tests): CRUD de roles, asignacion de permisos, protecciones (`super-admin` ineliminable, roles con usuarios) y acceso por permiso.
+- `tests/Feature/ExampleTest.php` y `tests/Unit/ExampleTest.php`: pruebas base.
+- Configuracion: SQLite en memoria (ver `phpunit.xml`).
+- Ejecutar con `php artisan test` o `composer test`.
 
 ### Requerimientos
 
@@ -551,10 +680,10 @@ Incluye:
 
 ## Base de datos
 
-Tablas principales:
+Tablas principales (~30, via 26 migraciones en `database/migrations`):
 
 - Seguridad: `users`, `roles`, `permissions`, `role_user`, `permission_role`
-- Catalogo: `products`, `product_images`, `categories`, `brands`, `presentations`, `suppliers`, `product_supplier`
+- Catalogo: `products`, `product_images`, `product_prices`, `categories`, `brands`, `presentations`, `suppliers`, `product_supplier`
 - Inventario: `movements`, `inventory_periods`
 - Ventas: `sales`, `sale_items`, `sale_payments`
 - Clientes: `customers`
@@ -564,6 +693,12 @@ Tablas principales:
 - Cotizaciones: `quotes`, `quote_items`
 - Taller: `technicians`, `workshop_orders`
 - Comprobantes: `receipt_types`
+- Infraestructura: `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `personal_access_tokens` (Sanctum)
+
+Seeder (`database/seeders/DatabaseSeeder.php`):
+
+- 20 permisos, 8 roles y usuario admin (`ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` desde `.env`).
+- Datos base: 5 categorias, 4 marcas y 3 tipos de comprobante (FACTURA/F001, BOLETA/B001, TICKET/T001).
 
 ## Flujos operativos recomendados
 
@@ -641,9 +776,17 @@ Build frontend:
 npm.cmd run build
 ```
 
+Scripts de Composer:
+
+- `composer setup`: instalacion completa (deps, .env, key, migraciones, npm y build).
+- `composer dev`: servidor + cola + logs + Vite en paralelo.
+- `composer test`: limpia config y ejecuta la suite de pruebas.
+
 ## Notas operativas y soporte
 
 - Mantener `APP_TIMEZONE=America/Managua`.
+- Despliegue WAMP en subcarpeta: acceder via `http://localhost/inventario/public/` (el `.htaccess` raiz redirige automaticamente).
+- `SESSION_DRIVER`, `QUEUE_CONNECTION` y `CACHE_STORE` usan la base de datos, por lo que las tablas correspondientes deben estar migradas.
 - Verificar caja abierta antes de ventas/abonos.
 - Revisar tipos de comprobante activos antes de vender.
 - Ajustar correlativos en `Comprobantes` al inicio de operaciones.
